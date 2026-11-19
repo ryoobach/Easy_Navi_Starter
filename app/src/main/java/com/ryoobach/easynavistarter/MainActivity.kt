@@ -24,8 +24,8 @@ class MainActivity : Activity() {
     private lateinit var autoShutdown: CheckBox
     private lateinit var status: TextView
     private lateinit var navListContainer: LinearLayout
-    private var selectedPackage = "com.skt.tmap"
-    private var selectedLabel = "티맵"
+    private var selectedPackage = ""
+    private var selectedLabel = ""
     private val addedNavigationApps = mutableListOf<NavApp>()
 
     private data class NavApp(val label: String, val packageName: String)
@@ -39,22 +39,21 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-        val storedPackage = prefs.getString(KEY_PACKAGE, builtInApps[0].packageName) ?: builtInApps[0].packageName
-        // TMAP의 현재 Google Play 패키지명은 com.skt.tmap.ku입니다.
-        // 이전 버전에서 저장한 com.skt.tmap 설정은 새 패키지가 설치되어 있으면 자동 이전합니다.
+        val storedPackage = prefs.getString(KEY_PACKAGE, "") ?: ""
+        // 구버전에서 저장한 티맵 패키지명을 현재 패키지명으로 이전합니다.
         selectedPackage = if (
             storedPackage == "com.skt.tmap" &&
             packageManager.getLaunchIntentForPackage("com.skt.tmap.ku") != null
         ) "com.skt.tmap.ku" else storedPackage
-        selectedLabel = if (selectedPackage == "com.skt.tmap.ku" || selectedPackage == "com.skt.tmap") {
-            "티맵"
-        } else {
-            prefs.getString(KEY_LABEL, builtInApps[0].label) ?: builtInApps[0].label
-        }
-        if (selectedPackage != storedPackage) {
+        selectedLabel = prefs.getString(KEY_LABEL, "") ?: ""
+        loadAddedNavigationApps()
+        // 저장된 실행 앱이 더 이상 설치되어 있거나 추가 목록에 없으면 선택을 비웁니다.
+        if (addedNavigationApps.none { it.packageName == selectedPackage }) {
+            selectedPackage = ""
+            selectedLabel = ""
+        } else if (selectedPackage != storedPackage) {
             prefs.edit().putString(KEY_PACKAGE, selectedPackage).putString(KEY_LABEL, selectedLabel).apply()
         }
-        loadAddedNavigationApps()
 
         val scroll = ScrollView(this).apply {
             setBackgroundColor(Color.rgb(250, 250, 250))
@@ -168,13 +167,19 @@ class MainActivity : Activity() {
 
     private fun loadAddedNavigationApps() {
         val saved = prefs.getStringSet(KEY_ADDED_NAV_APPS, emptySet())?.toSet() ?: emptySet()
+        val installedApps = findInstalledNavigationApps()
         addedNavigationApps.clear()
         saved.forEach { packageName ->
-            val app = findInstalledNavigationApps().firstOrNull { it.packageName == packageName }
-            if (app != null && builtInApps.none { it.packageName == packageName }) {
+            // 구버전 티맵 패키지 저장값도 현재 설치된 티맵으로 복구합니다.
+            val app = installedApps.firstOrNull { it.packageName == packageName }
+                ?: if (packageName == "com.skt.tmap") {
+                    installedApps.firstOrNull { it.packageName == "com.skt.tmap.ku" }
+                } else null
+            if (app != null && addedNavigationApps.none { it.packageName == app.packageName }) {
                 addedNavigationApps.add(app)
             }
         }
+        prefs.edit().putStringSet(KEY_ADDED_NAV_APPS, addedNavigationApps.map { it.packageName }.toSet()).apply()
     }
 
     // 한국에서 사용하는 내비게이션 브랜드로 확인되는 앱만 후보로 삼고,
@@ -218,15 +223,12 @@ class MainActivity : Activity() {
             .setPositiveButton("추가") { _, _ ->
                 addedNavigationApps.clear()
                 installedApps.forEachIndexed { index, app ->
-                    if (selected[index] && builtInApps.none { it.packageName == app.packageName }) {
-                        addedNavigationApps.add(app)
-                    }
+                    if (selected[index]) addedNavigationApps.add(app)
                 }
                 prefs.edit().putStringSet(KEY_ADDED_NAV_APPS, addedNavigationApps.map { it.packageName }.toSet()).apply()
-                if (addedNavigationApps.none { it.packageName == selectedPackage } &&
-                    builtInApps.none { it.packageName == selectedPackage }) {
-                    selectedPackage = builtInApps[0].packageName
-                    selectedLabel = builtInApps[0].label
+                if (addedNavigationApps.none { it.packageName == selectedPackage }) {
+                    selectedPackage = ""
+                    selectedLabel = ""
                 }
                 refreshNavigationList()
             }
@@ -236,7 +238,7 @@ class MainActivity : Activity() {
 
     private fun refreshNavigationList() {
         navListContainer.removeAllViews()
-        val allApps = builtInApps + addedNavigationApps
+        val allApps = addedNavigationApps.toList()
         allApps.forEach { app ->
             val radio = RadioButton(this).apply {
                 text = app.label
@@ -297,6 +299,10 @@ class MainActivity : Activity() {
     }
 
     private fun saveSettings() {
+        if (selectedPackage.isBlank() || addedNavigationApps.none { it.packageName == selectedPackage }) {
+            Toast.makeText(this, "네비 추가에서 실행할 내비게이션을 등록하고 선택해 주세요.", Toast.LENGTH_LONG).show()
+            return
+        }
         val saved = prefs.edit()
             .putString(KEY_PACKAGE, selectedPackage)
             .putString(KEY_LABEL, selectedLabel)
@@ -338,8 +344,8 @@ class MainActivity : Activity() {
 
     private fun showAppInfo() {
         val version = try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.2.8"
-        } catch (_: Exception) { "0.2.7" }
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.2.9"
+        } catch (_: Exception) { "0.2.9" }
         AlertDialog.Builder(this)
             .setTitle("앱 정보")
             .setMessage("Easy Navi Starter\n버전 $version\nAndroid\n\nRyoo jaesang & 최피디")
