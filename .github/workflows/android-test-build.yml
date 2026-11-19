@@ -1,0 +1,87 @@
+name: Android APK Test Build (Persistent Debug Key)
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/android-test-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-35 build-tools;35.0.0
+
+      - name: Restore persistent debug signing key
+        id: debug-key-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: easy-navi-starter-debug-signing-key-v1
+
+      - name: Create debug signing key on first build only
+        if: steps.debug-key-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          mkdir -p ~/.android
+          keytool -genkeypair -v -keystore ~/.android/debug.keystore \
+            -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build debug APK
+        run: gradle --no-build-cache --rerun-tasks assembleDebug
+
+      - name: Verify APK and signing certificate
+        id: verify
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          APKANALYZER="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          APP_ID="$("$APKANALYZER" manifest application-id "$APK")"
+          VERSION_NAME="$("$APKANALYZER" manifest version-name "$APK")"
+          VERSION_CODE="$("$APKANALYZER" manifest version-code "$APK")"
+          test "$APP_ID" = "com.ryoobach.easynavistarter"
+          CERT_SHA256="$("$APKSIGNER" verify --verbose --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest:/{print $2; exit}')"
+          test -n "$CERT_SHA256"
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "certificate_sha256=$CERT_SHA256" >> "$GITHUB_OUTPUT"
+          echo "APK verified: $APP_ID $VERSION_NAME ($VERSION_CODE)"
+          echo "Signing certificate SHA-256: $CERT_SHA256"
+
+      - name: Package APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/Easy-Navi-Starter-v${{ steps.verify.outputs.version_name }}-debug-test.apk"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Easy-Navi-Starter-v${{ steps.verify.outputs.version_name }}-debug-test
+          path: dist/*.apk
+          if-no-files-found: error
+          retention-days: 30
