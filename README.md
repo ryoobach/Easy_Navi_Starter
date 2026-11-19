@@ -10,6 +10,13 @@
 - 언어: Kotlin
 - 빌드: Gradle / GitHub Actions
 
+## 0.2.8 변경 사항
+- 앱 버전: 0.2.8 (versionCode 10)
+- 최신 티맵 공식 패키지명 `com.skt.tmap.ku` 적용
+- 기존 `com.skt.tmap`으로 저장된 티맵 선택값 자동 이전
+- 티맵 실행 시 현재 및 구형 패키지명 모두 확인
+- [네비 추가] 앱 검색에서 TMAP 영문 표기도 인식
+
 ## 0.2.7 변경 사항
 - 앱 버전: 0.2.7 (versionCode 9)
 - [네비 추가]는 기기에 설치된 한국 내비게이션 앱만 검색
@@ -69,5 +76,6 @@ GitHub Actions는 다음 항목을 확인한 뒤 APK를 업로드합니다.
 - 0.2.5 (versionCode 7): 초기 화면 및 설정 개선
 - 0.2.6 (versionCode 8): 승인된 초기 화면 반영
 - 0.2.7 (versionCode 9): 설치된 내비 앱 추가 목록 및 저장 후 실행
+- 0.2.8 (versionCode 10): 최신 티맵 패키지명 및 실행 호환성 수정
 
 버전 변경 시 앱 화면의 버전, `versionName`, `versionCode`, 앱 정보, README와 APK 파일명을 함께 갱신합니다.
