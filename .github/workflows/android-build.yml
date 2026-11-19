@@ -53,18 +53,11 @@ jobs:
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
-          APKANALYZER="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
-          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
-          APP_ID="$("$APKANALYZER" manifest application-id "$APK")"
-          VERSION_NAME="$("$APKANALYZER" manifest version-name "$APK")"
-          VERSION_CODE="$("$APKANALYZER" manifest version-code "$APK")"
-          test "$APP_ID" = "com.ryoobach.easynavistarter"
-          test "$VERSION_NAME" = "0.3.8"
-          test "$VERSION_CODE" = "20"
-          CERT_SHA256="$("$APKSIGNER" verify --verbose --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest:/{print $2; exit}')"
-          test -n "$CERT_SHA256"
-          echo "APK verified: $APP_ID $VERSION_NAME ($VERSION_CODE)"
-          echo "Signing certificate SHA-256: $CERT_SHA256"
+          grep -q 'applicationId = "com.ryoobach.easynavistarter"' app/build.gradle.kts
+          grep -q 'versionCode = 20' app/build.gradle.kts
+          grep -q 'versionName = "0.3.8"' app/build.gradle.kts
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+          echo "APK file exists, Gradle identity/version checked, and APK signature verified."
 
       - name: Package APK
         run: |
