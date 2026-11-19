@@ -7,10 +7,8 @@ import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
-import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.ImageView
@@ -25,23 +23,25 @@ class MainActivity : Activity() {
     private lateinit var autoLaunch: CheckBox
     private lateinit var autoShutdown: CheckBox
     private lateinit var status: TextView
-    private lateinit var navButtons: List<RadioButton>
+    private lateinit var navListContainer: LinearLayout
     private var selectedPackage = "com.skt.tmap"
     private var selectedLabel = "티맵"
+    private val addedNavigationApps = mutableListOf<NavApp>()
 
     private data class NavApp(val label: String, val packageName: String)
 
     private val builtInApps = listOf(
         NavApp("티맵", "com.skt.tmap"),
-        NavApp("카카오맵", "net.daum.android.map"),
-        NavApp("네이버 지도", "com.nhn.android.nmap")
+        NavApp("네이버 지도", "com.nhn.android.nmap"),
+        NavApp("카카오맵", "net.daum.android.map")
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         selectedPackage = prefs.getString(KEY_PACKAGE, builtInApps[0].packageName) ?: builtInApps[0].packageName
-        selectedLabel = prefs.getString(KEY_LABEL, builtInApps.firstOrNull { it.packageName == selectedPackage }?.label ?: "추가한 내비") ?: "추가한 내비"
+        selectedLabel = prefs.getString(KEY_LABEL, builtInApps[0].label) ?: builtInApps[0].label
+        loadAddedNavigationApps()
 
         val scroll = ScrollView(this).apply {
             setBackgroundColor(Color.rgb(250, 250, 250))
@@ -104,24 +104,9 @@ class MainActivity : Activity() {
 
         page.addView(sectionTitle("내비게이션 선택"))
         val navCard = card()
-        val firstRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val secondRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val tmap = navRadio("티맵")
-        val naver = navRadio("네이버 지도")
-        val kakao = navRadio("카카오맵")
-        val add = navRadio("네비 추가")
-        navButtons = listOf(tmap, naver, kakao, add)
-        listOf(firstRow, secondRow).forEach { row ->
-            navCard.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(54)))
-        }
-        firstRow.addView(tmap, LinearLayout.LayoutParams(0, dp(54), 1f))
-        firstRow.addView(naver, LinearLayout.LayoutParams(0, dp(54), 1f))
-        secondRow.addView(kakao, LinearLayout.LayoutParams(0, dp(54), 1f))
-        secondRow.addView(add, LinearLayout.LayoutParams(0, dp(54), 1f))
-        tmap.setOnClickListener { chooseBuiltIn(0) }
-        naver.setOnClickListener { chooseBuiltIn(2) }
-        kakao.setOnClickListener { chooseBuiltIn(1) }
-        add.setOnClickListener { chooseCustomNavigation() }
+        navListContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        navCard.addView(navListContainer)
+        refreshNavigationList()
         page.addView(navCard)
 
         val shutdownCard = card()
@@ -166,7 +151,108 @@ class MainActivity : Activity() {
 
         scroll.addView(page)
         setContentView(scroll)
-        refreshNavigationSelection()
+    }
+
+    private fun loadAddedNavigationApps() {
+        val saved = prefs.getStringSet(KEY_ADDED_NAV_APPS, emptySet())?.toSet() ?: emptySet()
+        addedNavigationApps.clear()
+        saved.forEach { packageName ->
+            val app = findInstalledNavigationApps().firstOrNull { it.packageName == packageName }
+            if (app != null && builtInApps.none { it.packageName == packageName }) {
+                addedNavigationApps.add(app)
+            }
+        }
+    }
+
+    // 한국에서 사용하는 내비게이션 브랜드로 확인되는 앱만 후보로 삼고,
+    // 실제 설치되어 있으며 실행 가능한 앱만 목록에 표시합니다.
+    private fun findInstalledNavigationApps(): List<NavApp> {
+        val knownPackages = builtInApps.map { it.packageName }.toSet()
+        val navigationNames = listOf("티맵", "t map", "카카오맵", "네이버 지도", "아이나비", "아틀란", "맵피", "원내비")
+        return packageManager.getInstalledApplications(0)
+            .filter { it.packageName != packageName && packageManager.getLaunchIntentForPackage(it.packageName) != null }
+            .mapNotNull { info ->
+                val label = packageManager.getApplicationLabel(info).toString()
+                val normalized = label.lowercase()
+                if (info.packageName in knownPackages || navigationNames.any { normalized.contains(it) }) {
+                    NavApp(label, info.packageName)
+                } else null
+            }
+            .distinctBy { it.packageName }
+            .sortedBy { it.label.lowercase() }
+    }
+
+    private fun showAddNavigationDialog() {
+        val installedApps = findInstalledNavigationApps()
+        if (installedApps.isEmpty()) {
+            AlertDialog.Builder(this)
+                .setTitle("내비게이션 앱 없음")
+                .setMessage("설치된 내비게이션 앱이 없습니다.\n내비게이션 앱을 설치한 후 다시 시도해 주세요.")
+                .setPositiveButton("확인", null)
+                .show()
+            return
+        }
+
+        val labels = installedApps.map { it.label }.toTypedArray()
+        val selected = BooleanArray(installedApps.size) { index ->
+            addedNavigationApps.any { it.packageName == installedApps[index].packageName }
+        }
+        AlertDialog.Builder(this)
+            .setTitle("설치된 내비게이션 앱")
+            .setMultiChoiceItems(labels, selected) { _, which, isChecked ->
+                selected[which] = isChecked
+            }
+            .setPositiveButton("추가") { _, _ ->
+                addedNavigationApps.clear()
+                installedApps.forEachIndexed { index, app ->
+                    if (selected[index] && builtInApps.none { it.packageName == app.packageName }) {
+                        addedNavigationApps.add(app)
+                    }
+                }
+                prefs.edit().putStringSet(KEY_ADDED_NAV_APPS, addedNavigationApps.map { it.packageName }.toSet()).apply()
+                if (addedNavigationApps.none { it.packageName == selectedPackage } &&
+                    builtInApps.none { it.packageName == selectedPackage }) {
+                    selectedPackage = builtInApps[0].packageName
+                    selectedLabel = builtInApps[0].label
+                }
+                refreshNavigationList()
+            }
+            .setNegativeButton("취소", null)
+            .show()
+    }
+
+    private fun refreshNavigationList() {
+        navListContainer.removeAllViews()
+        val allApps = builtInApps + addedNavigationApps
+        allApps.forEach { app ->
+            val radio = RadioButton(this).apply {
+                text = app.label
+                textSize = 18f
+                setTextColor(Color.BLACK)
+                buttonTintList = android.content.res.ColorStateList.valueOf(Color.BLACK)
+                isChecked = selectedPackage == app.packageName
+                setPadding(0, 0, dp(4), 0)
+                setOnClickListener {
+                    selectedPackage = app.packageName
+                    selectedLabel = app.label
+                    refreshNavigationList()
+                }
+            }
+            navListContainer.addView(radio, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(50)
+            ))
+        }
+        val addButton = Button(this).apply {
+            text = "네비 추가"
+            textSize = 16f
+            isAllCaps = false
+            setTextColor(Color.BLACK)
+            background = rounded(Color.rgb(238, 238, 238), 12)
+            setOnClickListener { showAddNavigationDialog() }
+        }
+        val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(48))
+        params.topMargin = dp(6)
+        navListContainer.addView(addButton, params)
     }
 
     private fun card(): LinearLayout {
@@ -197,69 +283,36 @@ class MainActivity : Activity() {
         setLineSpacing(dp(4).toFloat(), 1f)
     }
 
-    private fun navRadio(text: String) = RadioButton(this).apply {
-        this.text = text
-        textSize = 18f
-        setTextColor(Color.BLACK)
-        buttonTintList = android.content.res.ColorStateList.valueOf(Color.BLACK)
-        setPadding(0, 0, dp(4), 0)
-        isSingleLine = false
-    }
-
-    private fun chooseBuiltIn(index: Int) {
-        val app = builtInApps[index]
-        selectedPackage = app.packageName
-        selectedLabel = app.label
-        refreshNavigationSelection()
-    }
-
-    private fun chooseCustomNavigation() {
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val apps = packageManager.queryIntentActivities(intent, 0)
-            .filter { it.activityInfo.packageName != packageName }
-            .sortedBy { it.loadLabel(packageManager).toString().lowercase() }
-        if (apps.isEmpty()) {
-            Toast.makeText(this, "선택할 수 있는 앱이 없습니다.", Toast.LENGTH_SHORT).show()
-            refreshNavigationSelection()
-            return
-        }
-        val labels = apps.map { it.loadLabel(packageManager).toString() }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("내비게이션 앱 선택")
-            .setItems(labels) { _, which ->
-                selectedPackage = apps[which].activityInfo.packageName
-                selectedLabel = labels[which]
-                refreshNavigationSelection()
-            }
-            .setNegativeButton("취소") { _, _ -> refreshNavigationSelection() }
-            .show()
-    }
-
-    private fun refreshNavigationSelection() {
-        val index = when (selectedPackage) {
-            builtInApps[0].packageName -> 0
-            builtInApps[2].packageName -> 1
-            builtInApps[1].packageName -> 2
-            else -> 3
-        }
-        navButtons.forEachIndexed { i, button -> button.isChecked = i == index }
-    }
-
     private fun saveSettings() {
-        prefs.edit()
+        val saved = prefs.edit()
             .putString(KEY_PACKAGE, selectedPackage)
             .putString(KEY_LABEL, selectedLabel)
+            .putStringSet(KEY_ADDED_NAV_APPS, addedNavigationApps.map { it.packageName }.toSet())
             .putBoolean(KEY_AUTO, autoLaunch.isChecked)
             .putBoolean(KEY_SHUTDOWN, autoShutdown.isChecked)
             .putBoolean(KEY_RESTORE_LAST_LOCATION, true)
-            .apply()
+            .commit()
+        if (!saved) {
+            status.text = "설정을 저장하지 못했습니다."
+            return
+        }
         status.text = "설정을 저장했습니다."
+        val launchIntent = packageManager.getLaunchIntentForPackage(selectedPackage)
+        if (launchIntent == null) {
+            Toast.makeText(this, "선택한 내비게이션 앱을 실행할 수 없습니다.", Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            startActivity(launchIntent)
+        } catch (_: Exception) {
+            Toast.makeText(this, "내비게이션 앱을 불러오지 못했습니다.", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun showAppInfo() {
         val version = try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.2.6"
-        } catch (_: Exception) { "0.2.6" }
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.2.7"
+        } catch (_: Exception) { "0.2.7" }
         AlertDialog.Builder(this)
             .setTitle("앱 정보")
             .setMessage("Easy Navi Starter\n버전 $version\nAndroid\n\nRyoo jaesang & 최피디")
@@ -280,6 +333,7 @@ class MainActivity : Activity() {
         const val PREFS = "easy_navi_settings"
         const val KEY_PACKAGE = "navigation_package"
         const val KEY_LABEL = "navigation_label"
+        const val KEY_ADDED_NAV_APPS = "added_navigation_apps"
         const val KEY_AUTO = "auto_launch"
         const val KEY_SHUTDOWN = "auto_shutdown_on_unplug"
         const val KEY_RESTORE_LAST_LOCATION = "restore_last_location"
