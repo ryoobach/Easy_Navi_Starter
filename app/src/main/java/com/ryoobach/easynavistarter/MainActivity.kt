@@ -43,7 +43,7 @@ class MainActivity : Activity() {
             setPadding(dp(22), dp(24), dp(22), dp(24))
         }
         page.addView(TextView(this).apply {
-            text = "이지 네비 스타터  0.2.0"
+            text = "이지 네비 스타터  0.2.1"
             textSize = 23f
             setTextColor(0xFF17365D.toInt())
         })
@@ -204,7 +204,7 @@ class MainActivity : Activity() {
     private fun showAppInfo() {
         AlertDialog.Builder(this)
             .setTitle("앱 정보")
-            .setMessage("이지 네비 스타터\n버전 0.2.0\nAndroid\n\nRyoo jaesang & 최피디")
+            .setMessage("이지 네비 스타터\n버전 0.2.1\nAndroid\n\nRyoo jaesang & 최피디")
             .setPositiveButton("확인", null)
             .show()
     }
