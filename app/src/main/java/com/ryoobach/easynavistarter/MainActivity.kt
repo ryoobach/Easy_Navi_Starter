@@ -31,7 +31,7 @@ class MainActivity : Activity() {
     private data class NavApp(val label: String, val packageName: String)
 
     private val builtInApps = listOf(
-        NavApp("티맵", "com.skt.tmap"),
+        NavApp("티맵", "com.skt.tmap.ku"),
         NavApp("네이버 지도", "com.nhn.android.nmap"),
         NavApp("카카오맵", "net.daum.android.map")
     )
@@ -39,8 +39,21 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
-        selectedPackage = prefs.getString(KEY_PACKAGE, builtInApps[0].packageName) ?: builtInApps[0].packageName
-        selectedLabel = prefs.getString(KEY_LABEL, builtInApps[0].label) ?: builtInApps[0].label
+        val storedPackage = prefs.getString(KEY_PACKAGE, builtInApps[0].packageName) ?: builtInApps[0].packageName
+        // TMAP의 현재 Google Play 패키지명은 com.skt.tmap.ku입니다.
+        // 이전 버전에서 저장한 com.skt.tmap 설정은 새 패키지가 설치되어 있으면 자동 이전합니다.
+        selectedPackage = if (
+            storedPackage == "com.skt.tmap" &&
+            packageManager.getLaunchIntentForPackage("com.skt.tmap.ku") != null
+        ) "com.skt.tmap.ku" else storedPackage
+        selectedLabel = if (selectedPackage == "com.skt.tmap.ku" || selectedPackage == "com.skt.tmap") {
+            "티맵"
+        } else {
+            prefs.getString(KEY_LABEL, builtInApps[0].label) ?: builtInApps[0].label
+        }
+        if (selectedPackage != storedPackage) {
+            prefs.edit().putString(KEY_PACKAGE, selectedPackage).putString(KEY_LABEL, selectedLabel).apply()
+        }
         loadAddedNavigationApps()
 
         val scroll = ScrollView(this).apply {
@@ -168,13 +181,13 @@ class MainActivity : Activity() {
     // 실제 설치되어 있으며 실행 가능한 앱만 목록에 표시합니다.
     private fun findInstalledNavigationApps(): List<NavApp> {
         val knownPackages = builtInApps.map { it.packageName }.toSet()
-        val navigationNames = listOf("티맵", "t map", "카카오맵", "네이버 지도", "아이나비", "아틀란", "맵피", "원내비")
+        val navigationNames = listOf("티맵", "t map", "tmap", "카카오맵", "네이버 지도", "아이나비", "아틀란", "맵피", "원내비")
         return packageManager.getInstalledApplications(0)
             .filter { it.packageName != packageName && packageManager.getLaunchIntentForPackage(it.packageName) != null }
             .mapNotNull { info ->
                 val label = packageManager.getApplicationLabel(info).toString()
                 val normalized = label.lowercase()
-                if (info.packageName in knownPackages || navigationNames.any { normalized.contains(it) }) {
+                if (info.packageName in knownPackages || info.packageName == "com.skt.tmap" || navigationNames.any { normalized.contains(it) }) {
                     NavApp(label, info.packageName)
                 } else null
             }
@@ -297,7 +310,7 @@ class MainActivity : Activity() {
             return
         }
         status.text = "설정을 저장했습니다."
-        val launchIntent = packageManager.getLaunchIntentForPackage(selectedPackage)
+        val launchIntent = getNavigationLaunchIntent(selectedPackage)
         if (launchIntent == null) {
             Toast.makeText(this, "선택한 내비게이션 앱을 실행할 수 없습니다.", Toast.LENGTH_LONG).show()
             return
@@ -309,9 +322,23 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun getNavigationLaunchIntent(packageName: String): Intent? {
+        // 현재 티맵과 구형 티맵 패키지명을 모두 지원합니다.
+        val candidates = if (packageName == "com.skt.tmap.ku" || packageName == "com.skt.tmap") {
+            listOf(packageName, "com.skt.tmap.ku", "com.skt.tmap").distinct()
+        } else {
+            listOf(packageName)
+        }
+        return candidates.firstNotNullOfOrNull { candidate ->
+            packageManager.getLaunchIntentForPackage(candidate)
+        }?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
+
     private fun showAppInfo() {
         val version = try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.2.7"
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.2.8"
         } catch (_: Exception) { "0.2.7" }
         AlertDialog.Builder(this)
             .setTitle("앱 정보")
