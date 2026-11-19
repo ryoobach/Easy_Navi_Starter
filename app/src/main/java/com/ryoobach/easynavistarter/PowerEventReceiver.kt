@@ -11,15 +11,21 @@ class PowerEventReceiver : BroadcastReceiver() {
         when (intent.action) {
             Intent.ACTION_POWER_CONNECTED -> {
                 Log.i(TAG, "Power connected")
-                if (prefs.getBoolean(MainActivity.KEY_AUTO, false)) launchNavigation(context, "전원 연결")
+                if (prefs.getBoolean(MainActivity.KEY_AUTO, true)) {
+                    launchNavigation(context, "전원 연결")
+                }
             }
             Intent.ACTION_POWER_DISCONNECTED -> {
                 Log.i(TAG, "Power disconnected")
-                // Android 일반 앱은 다른 앱 강제 종료나 화면 잠금을 보장할 수 없습니다.
+                if (prefs.getBoolean(MainActivity.KEY_SHUTDOWN, false)) {
+                    Log.i(TAG, "종료 옵션이 선택되어 있지만 일반 앱 권한으로 다른 앱 종료 또는 기기 전원 OFF를 수행할 수 없습니다.")
+                }
             }
             Intent.ACTION_BOOT_COMPLETED -> {
                 Log.i(TAG, "Boot completed")
-                if (prefs.getBoolean(MainActivity.KEY_BOOT, false)) launchNavigation(context, "부팅 완료")
+                if (prefs.getBoolean(MainActivity.KEY_AUTO, true)) {
+                    launchNavigation(context, "기기 시작")
+                }
             }
         }
     }
@@ -31,11 +37,13 @@ class PowerEventReceiver : BroadcastReceiver() {
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {
             context.startActivity(launchIntent)
-            Log.i(TAG, "Launch requested: " + packageName + " (" + reason + ")")
+            Log.i(TAG, "Launch requested: $packageName ($reason)")
         } catch (e: Exception) {
-            Log.w(TAG, "Background launch blocked: " + packageName + " (" + reason + ")", e)
+            Log.w(TAG, "Background launch blocked: $packageName ($reason)", e)
         }
     }
 
-    companion object { private const val TAG = "EasyNaviPower" }
+    companion object {
+        private const val TAG = "EasyNaviPower"
+    }
 }
