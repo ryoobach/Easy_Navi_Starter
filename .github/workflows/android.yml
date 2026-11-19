@@ -80,14 +80,16 @@ jobs:
           APK="app/build/outputs/apk/release/app-release.apk"
           test -s "$APK" || (echo "Release APK was not created" && exit 1)
 
-          ACTUAL_ID="$(apkanalyzer manifest application-id "$APK")"
-          ACTUAL_VERSION_NAME="$(apkanalyzer manifest version-name "$APK")"
-          ACTUAL_VERSION_CODE="$(apkanalyzer manifest version-code "$APK")"
+          APKANALYZER="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          ACTUAL_ID="$("$APKANALYZER" manifest application-id "$APK")"
+          ACTUAL_VERSION_NAME="$("$APKANALYZER" manifest version-name "$APK")"
+          ACTUAL_VERSION_CODE="$("$APKANALYZER" manifest version-code "$APK")"
           test "$ACTUAL_ID" = "${{ steps.app.outputs.application_id }}" || (echo "applicationId mismatch: $ACTUAL_ID" && exit 1)
           test "$ACTUAL_VERSION_NAME" = "${{ steps.app.outputs.version_name }}" || (echo "versionName mismatch: $ACTUAL_VERSION_NAME" && exit 1)
           test "$ACTUAL_VERSION_CODE" = "${{ steps.app.outputs.version_code }}" || (echo "versionCode mismatch: $ACTUAL_VERSION_CODE" && exit 1)
 
-          SIGNER_SHA256="$(apksigner verify --verbose --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest:/{print $2; exit}' | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          SIGNER_SHA256="$("$APKSIGNER" verify --verbose --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest:/{print $2; exit}' | tr -d ':' | tr '[:lower:]' '[:upper:]')"
           test -n "$SIGNER_SHA256" || (echo "APK signing certificate could not be read" && exit 1)
           test "$SIGNER_SHA256" = "$EXPECTED_SIGNING_SHA256" || (echo "APK signing certificate does not match the persistent release key" && exit 1)
 
