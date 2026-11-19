@@ -11,34 +11,28 @@ android {
         applicationId = "com.ryoobach.easynavistarter"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.2.3"
+        versionCode = 6
+        versionName = "0.2.4"
     }
 
     signingConfigs {
         create("release") {
             val storePath = System.getenv("ANDROID_KEYSTORE_PATH")
-            val storePass = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-            val keyAliasValue = System.getenv("ANDROID_KEY_ALIAS")
-            val keyPass = System.getenv("ANDROID_KEY_PASSWORD")
-
-            if (!storePath.isNullOrBlank()) {
-                storeFile = file(storePath)
-            }
-            if (!storePass.isNullOrBlank()) storePassword = storePass
-            if (!keyAliasValue.isNullOrBlank()) keyAlias = keyAliasValue
-            if (!keyPass.isNullOrBlank()) keyPassword = keyPass
+                ?: error("Persistent release keystore is required. Configure GitHub Actions secrets.")
+            storeFile = file(storePath)
+            storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                ?: error("ANDROID_KEYSTORE_PASSWORD is missing.")
+            keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                ?: error("ANDROID_KEY_ALIAS is missing.")
+            keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+                ?: error("ANDROID_KEY_PASSWORD is missing.")
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = if (System.getenv("ANDROID_KEYSTORE_PATH").isNullOrBlank()) {
-                signingConfigs.getByName("debug")
-            } else {
-                signingConfigs.getByName("release")
-            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
