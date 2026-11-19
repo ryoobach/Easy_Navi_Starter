@@ -15,15 +15,13 @@ val hasReleaseSigning = !releaseStorePath.isNullOrBlank() &&
 android {
     namespace = "com.ryoobach.easynavistarter"
     compileSdk = 35
-
     defaultConfig {
         applicationId = "com.ryoobach.easynavistarter"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "0.3.6"
+        versionCode = 19
+        versionName = "0.3.7"
     }
-
     if (hasReleaseSigning) {
         signingConfigs {
             create("release") {
@@ -34,16 +32,12 @@ android {
             }
         }
     }
-
     buildTypes {
         release {
             isMinifyEnabled = false
-            if (hasReleaseSigning) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
         }
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
