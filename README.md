@@ -79,3 +79,7 @@ GitHub Actions는 다음 항목을 확인한 뒤 APK를 업로드합니다.
 - 0.2.8 (versionCode 10): 최신 티맵 패키지명 및 실행 호환성 수정
 
 버전 변경 시 앱 화면의 버전, `versionName`, `versionCode`, 앱 정보, README와 APK 파일명을 함께 갱신합니다.
+
+- 0.3.1 (versionCode 13): 충전 케이블 분리 시 내비게이션 화면에서 홈 화면으로 전환 요청 및 기기 전원 끄기 시도, 버전별 APK 파일명 적용
+- 0.3.2 (versionCode 14): 0.3.1 기능 유지, 업데이트 버전 및 빌드 번호 갱신
+
