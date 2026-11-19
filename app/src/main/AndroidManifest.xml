@@ -1,15 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- 설치된 내비게이션 앱만 확인하도록 패키지 조회 범위를 명시적으로 제한합니다. -->
     <queries>
         <package android:name="com.skt.tmap.ku" />
         <package android:name="com.skt.tmap" />
         <package android:name="com.nhn.android.nmap" />
         <package android:name="net.daum.android.map" />
     </queries>
-
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
@@ -22,18 +19,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service
-            android:name=".PowerMenuAccessibilityService"
-            android:label="이지 네비 스타터 전원 메뉴"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/power_menu_accessibility_service" />
-        </service>
         <receiver android:name=".PowerEventReceiver" android:enabled="true" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
