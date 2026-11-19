@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   build:
+    if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,7 +45,6 @@ jobs:
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "application_id=$APPLICATION_ID" >> "$GITHUB_OUTPUT"
-          echo "Building $APPLICATION_ID version $VERSION_NAME ($VERSION_CODE)"
 
       - name: Prepare persistent release signing key
         env:
@@ -54,18 +54,12 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         shell: bash
         run: |
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
-            echo "::error::Persistent signing secrets are required. Add ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD in repository Actions secrets."
-            exit 1
-          fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/easy-navi-release.jks"
           test -s "$RUNNER_TEMP/easy-navi-release.jks" || (echo "Decoded keystore is empty" && exit 1)
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/easy-navi-release.jks" >> "$GITHUB_ENV"
           KEYSTORE_SHA256="$(keytool -list -v -keystore "$RUNNER_TEMP/easy-navi-release.jks" -alias "$ANDROID_KEY_ALIAS" -storepass "$ANDROID_KEYSTORE_PASSWORD" | awk '/SHA256:/{print $2; exit}' | tr -d ':' | tr '[:lower:]' '[:upper:]')"
           test -n "$KEYSTORE_SHA256" || (echo "Could not read signing certificate fingerprint" && exit 1)
           echo "EXPECTED_SIGNING_SHA256=$KEYSTORE_SHA256" >> "$GITHUB_ENV"
-          echo "SIGNING_MODE=release" >> "$GITHUB_ENV"
-          echo "Persistent release signing certificate loaded."
 
       - name: Build signed APK
         env:
@@ -85,15 +79,13 @@ jobs:
           ACTUAL_ID="$("$APKANALYZER" manifest application-id "$APK")"
           ACTUAL_VERSION_NAME="$("$APKANALYZER" manifest version-name "$APK")"
           ACTUAL_VERSION_CODE="$("$APKANALYZER" manifest version-code "$APK")"
-          test "$ACTUAL_ID" = "${{ steps.app.outputs.application_id }}" || (echo "applicationId mismatch: $ACTUAL_ID" && exit 1)
-          test "$ACTUAL_VERSION_NAME" = "${{ steps.app.outputs.version_name }}" || (echo "versionName mismatch: $ACTUAL_VERSION_NAME" && exit 1)
-          test "$ACTUAL_VERSION_CODE" = "${{ steps.app.outputs.version_code }}" || (echo "versionCode mismatch: $ACTUAL_VERSION_CODE" && exit 1)
+          test "$ACTUAL_ID" = "${{ steps.app.outputs.application_id }}"
+          test "$ACTUAL_VERSION_NAME" = "${{ steps.app.outputs.version_name }}"
+          test "$ACTUAL_VERSION_CODE" = "${{ steps.app.outputs.version_code }}"
           SIGNER_SHA256="$("$APKSIGNER" verify --verbose --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest:/{print $2; exit}' | tr -d ':' | tr '[:lower:]' '[:upper:]')"
-          test -n "$SIGNER_SHA256" || (echo "APK signing certificate could not be read" && exit 1)
+          test -n "$SIGNER_SHA256"
           test "$SIGNER_SHA256" = "$EXPECTED_SIGNING_SHA256" || (echo "APK certificate does not match persistent release key" && exit 1)
-          echo "APK identity, version, and persistent signature verified."
           echo "version_name=$ACTUAL_VERSION_NAME" >> "$GITHUB_OUTPUT"
-          echo "signing_mode=release" >> "$GITHUB_OUTPUT"
 
       - name: Package versioned APK
         env:
