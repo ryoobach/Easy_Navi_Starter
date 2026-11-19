@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
+import android.provider.Settings
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -130,7 +131,24 @@ class MainActivity : Activity() {
             isChecked = prefs.getBoolean(KEY_SHUTDOWN, false)
         }
         shutdownCard.addView(autoShutdown)
-        shutdownCard.addView(description("충전 케이블을 분리하면 내비게이션을 닫고 전원 끄기를 시도합니다.\n일반 기기는 Android 권한 제한으로 완전 종료가 지원되지 않을 수 있습니다."))
+        shutdownCard.addView(description("충전 케이블을 분리하면 내비게이션을 홈 화면으로 전환한 뒤 시스템 전원 메뉴를 표시합니다.\n아래 버튼에서 접근성 서비스를 한 번 켜 주세요."))
+        val accessibilityButton = Button(this).apply {
+            text = "전원 메뉴 호출 권한 설정"
+            textSize = 15f
+            isAllCaps = false
+            setTextColor(Color.BLACK)
+            background = rounded(Color.rgb(238, 238, 238), 12)
+            setOnClickListener {
+                try {
+                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                } catch (_: Exception) {
+                    Toast.makeText(this@MainActivity, "접근성 설정을 열 수 없습니다.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        val accessibilityParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(48))
+        accessibilityParams.topMargin = dp(10)
+        shutdownCard.addView(accessibilityButton, accessibilityParams)
         page.addView(shutdownCard)
 
         val save = Button(this).apply {
@@ -344,8 +362,8 @@ class MainActivity : Activity() {
 
     private fun showAppInfo() {
         val version = try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.3.0"
-        } catch (_: Exception) { "0.3.0" }
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.3.3"
+        } catch (_: Exception) { "0.3.3" }
         AlertDialog.Builder(this)
             .setTitle("앱 정보")
             .setMessage("Easy Navi Starter\n버전 $version\nAndroid\n\nRyoo jaesang & 최피디")
