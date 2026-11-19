@@ -123,14 +123,14 @@ class MainActivity : Activity() {
 
         val shutdownCard = card()
         autoShutdown = CheckBox(this).apply {
-            text = "충전 종료 시 휴대폰 자동종료"
+            text = "충전 종료 시 내비 종료 및 휴대폰 전원 끄기"
             textSize = 19f
             setTextColor(Color.BLACK)
             buttonTintList = android.content.res.ColorStateList.valueOf(Color.BLACK)
             isChecked = prefs.getBoolean(KEY_SHUTDOWN, false)
         }
         shutdownCard.addView(autoShutdown)
-        shutdownCard.addView(description("충전 케이블을 분리하면 내비게이션을 종료하고\n시스템 전원 메뉴를 호출합니다."))
+        shutdownCard.addView(description("충전 케이블을 분리하면 내비게이션을 닫고 전원 끄기를 시도합니다.\n일반 기기는 Android 권한 제한으로 완전 종료가 지원되지 않을 수 있습니다."))
         page.addView(shutdownCard)
 
         val save = Button(this).apply {
@@ -344,8 +344,8 @@ class MainActivity : Activity() {
 
     private fun showAppInfo() {
         val version = try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.2.9"
-        } catch (_: Exception) { "0.2.9" }
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.3.0"
+        } catch (_: Exception) { "0.3.0" }
         AlertDialog.Builder(this)
             .setTitle("앱 정보")
             .setMessage("Easy Navi Starter\n버전 $version\nAndroid\n\nRyoo jaesang & 최피디")
