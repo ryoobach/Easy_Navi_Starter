@@ -59,8 +59,8 @@ jobs:
           VERSION_NAME="$("$APKANALYZER" manifest version-name "$APK")"
           VERSION_CODE="$("$APKANALYZER" manifest version-code "$APK")"
           test "$APP_ID" = "com.ryoobach.easynavistarter"
-          test "$VERSION_NAME" = "0.3.7"
-          test "$VERSION_CODE" = "19"
+          test "$VERSION_NAME" = "0.3.8"
+          test "$VERSION_CODE" = "20"
           CERT_SHA256="$("$APKSIGNER" verify --verbose --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest:/{print $2; exit}')"
           test -n "$CERT_SHA256"
           echo "APK verified: $APP_ID $VERSION_NAME ($VERSION_CODE)"
@@ -69,12 +69,12 @@ jobs:
       - name: Package APK
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/Easy_Navi_Starter_0.3.7.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/Easy_Navi_Starter_0.3.8.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Easy_Navi_Starter_0.3.7
-          path: dist/Easy_Navi_Starter_0.3.7.apk
+          name: Easy_Navi_Starter_0.3.8
+          path: dist/Easy_Navi_Starter_0.3.8.apk
           if-no-files-found: error
           retention-days: 30
