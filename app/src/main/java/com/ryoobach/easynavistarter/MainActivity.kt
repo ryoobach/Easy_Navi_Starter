@@ -9,6 +9,8 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Build
+import android.content.pm.PackageManager
 import android.view.Gravity
 import android.widget.Button
 import android.widget.CheckBox
@@ -131,7 +133,7 @@ class MainActivity : Activity() {
             isChecked = prefs.getBoolean(KEY_SHUTDOWN, false)
         }
         shutdownCard.addView(autoShutdown)
-        shutdownCard.addView(description("충전 케이블을 분리하면 내비게이션을 홈 화면으로 전환한 뒤 시스템 전원 메뉴를 표시합니다.\n아래 버튼에서 접근성 서비스를 한 번 켜 주세요."))
+        shutdownCard.addView(description("충전 케이블을 분리하면 먼저 확인 알림이 나타납니다.\n[예]를 누르면 내비게이션을 종료하고 시스템 전원 메뉴를 표시합니다.\n아래 버튼에서 접근성 서비스를 한 번 켜 주세요."))
         val accessibilityButton = Button(this).apply {
             text = "전원 메뉴 호출 권한 설정"
             textSize = 15f
@@ -181,6 +183,15 @@ class MainActivity : Activity() {
 
         scroll.addView(page)
         setContentView(scroll)
+        requestNotificationPermissionIfNeeded()
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1201)
+        }
     }
 
     private fun loadAddedNavigationApps() {
@@ -362,8 +373,8 @@ class MainActivity : Activity() {
 
     private fun showAppInfo() {
         val version = try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.3.3"
-        } catch (_: Exception) { "0.3.3" }
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.3.7"
+        } catch (_: Exception) { "0.3.7" }
         AlertDialog.Builder(this)
             .setTitle("앱 정보")
             .setMessage("Easy Navi Starter\n버전 $version\nAndroid\n\nRyoo jaesang & 최피디")
