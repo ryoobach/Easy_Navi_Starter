@@ -4,7 +4,6 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
-import android.provider.Settings
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -24,7 +23,6 @@ import android.widget.Toast
 class MainActivity : Activity() {
     private lateinit var prefs: SharedPreferences
     private lateinit var autoLaunch: CheckBox
-    private lateinit var autoShutdown: CheckBox
     private lateinit var status: TextView
     private lateinit var navListContainer: LinearLayout
     private var selectedPackage = ""
@@ -124,34 +122,13 @@ class MainActivity : Activity() {
         refreshNavigationList()
         page.addView(navCard)
 
-        val shutdownCard = card()
-        autoShutdown = CheckBox(this).apply {
-            text = "충전 케이블 분리 시 내비 종료 및 전원 메뉴 표시"
-            textSize = 19f
-            setTextColor(Color.BLACK)
-            buttonTintList = android.content.res.ColorStateList.valueOf(Color.BLACK)
-            isChecked = prefs.getBoolean(KEY_SHUTDOWN, false)
+        val shutdownNotice = TextView(this).apply {
+            text = "충전 케이블 분리 시 내비게이션 종료 및 전원 메뉴 표시 기능은 보안 차단 문제를 해결하기 위해 이번 버전에서 제외했습니다."
+            textSize = 14f
+            setTextColor(Color.GRAY)
+            setPadding(dp(4), dp(10), dp(4), dp(4))
         }
-        shutdownCard.addView(autoShutdown)
-        shutdownCard.addView(description("충전 케이블을 분리하면 내비게이션에서 홈 화면으로 이동한 뒤 시스템 전원 메뉴를 표시합니다. 전원 메뉴에서 기기 종료를 선택해 주세요.\n아래 버튼에서 접근성 서비스를 한 번 켜 주세요.\n※ 일반 앱은 사용자 확인 없이 기기의 전원을 완전히 끌 수 없습니다."))
-        val accessibilityButton = Button(this).apply {
-            text = "전원 메뉴 기능 권한 설정"
-            textSize = 15f
-            isAllCaps = false
-            setTextColor(Color.BLACK)
-            background = rounded(Color.rgb(238, 238, 238), 12)
-            setOnClickListener {
-                try {
-                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                } catch (_: Exception) {
-                    Toast.makeText(this@MainActivity, "접근성 설정을 열 수 없습니다.", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-        val accessibilityParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(48))
-        accessibilityParams.topMargin = dp(10)
-        shutdownCard.addView(accessibilityButton, accessibilityParams)
-        page.addView(shutdownCard)
+        page.addView(shutdownNotice)
 
         val save = Button(this).apply {
             text = "설정 저장"
