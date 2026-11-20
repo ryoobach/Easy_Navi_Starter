@@ -6,6 +6,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 
 class PowerEventReceiver : BroadcastReceiver() {
@@ -22,9 +24,19 @@ class PowerEventReceiver : BroadcastReceiver() {
                 Log.i(TAG, "Power disconnected; no privileged action requested")
             }
             Intent.ACTION_BOOT_COMPLETED -> {
-                Log.i(TAG, "Boot completed; autoLaunch=${prefs.getBoolean(MainActivity.KEY_AUTO, true)}")
-                if (prefs.getBoolean(MainActivity.KEY_AUTO, true)) {
-                    launchNavigation(context)
+                val enabled = prefs.getBoolean(MainActivity.KEY_AUTO, true)
+                val savedPackage = prefs.getString(MainActivity.KEY_PACKAGE, null)
+                Log.i(TAG, "Boot completed; autoLaunch=$enabled; savedPackage=$savedPackage")
+                if (enabled) {
+                    // 부팅 직후 시스템/런처 초기화가 끝날 시간을 준 뒤 내비게이션을 실행합니다.
+                    val pending = goAsync()
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        try {
+                            launchNavigation(context)
+                        } finally {
+                            pending.finish()
+                        }
+                    }, BOOT_LAUNCH_DELAY_MS)
                 }
             }
         }
@@ -92,5 +104,6 @@ class PowerEventReceiver : BroadcastReceiver() {
     companion object {
         private const val TAG = "EasyNaviPower"
         private const val BOOT_NAV_REQUEST_CODE = 7401
+        private const val BOOT_LAUNCH_DELAY_MS = 8_000L
     }
 }
