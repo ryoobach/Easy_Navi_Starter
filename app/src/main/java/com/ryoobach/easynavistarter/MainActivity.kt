@@ -76,7 +76,7 @@ class MainActivity : Activity() {
             setImageResource(com.ryoobach.easynavistarter.R.drawable.easy_navi_launcher)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
-        header.addView(logo, LinearLayout.LayoutParams(dp(66), dp(66)))
+        header.addView(logo, LinearLayout.LayoutParams(dp(60), dp(60)))
         val heading = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(10), 0, 0, 0)
@@ -126,16 +126,16 @@ class MainActivity : Activity() {
 
         val shutdownCard = card()
         autoShutdown = CheckBox(this).apply {
-            text = "충전 케이블 분리 시 내비 종료 및 화면 잠금"
+            text = "충전 케이블 분리 시 내비 종료 및 전원 메뉴 표시"
             textSize = 19f
             setTextColor(Color.BLACK)
             buttonTintList = android.content.res.ColorStateList.valueOf(Color.BLACK)
             isChecked = prefs.getBoolean(KEY_SHUTDOWN, false)
         }
         shutdownCard.addView(autoShutdown)
-        shutdownCard.addView(description("충전 케이블을 분리하면 내비게이션 화면에서 홈 화면으로 이동한 뒤 화면을 잠급니다.\n아래 버튼에서 접근성 서비스를 한 번 켜 주세요.\n※ 다른 앱 강제 종료와 휴대폰 완전 전원 끄기는 일반 앱 권한으로 지원되지 않습니다."))
+        shutdownCard.addView(description("충전 케이블을 분리하면 내비게이션에서 홈 화면으로 이동한 뒤 시스템 전원 메뉴를 표시합니다. 전원 메뉴에서 기기 종료를 선택해 주세요.\n아래 버튼에서 접근성 서비스를 한 번 켜 주세요.\n※ 일반 앱은 사용자 확인 없이 기기의 전원을 완전히 끌 수 없습니다."))
         val accessibilityButton = Button(this).apply {
-            text = "화면 잠금 기능 권한 설정"
+            text = "전원 메뉴 기능 권한 설정"
             textSize = 15f
             isAllCaps = false
             setTextColor(Color.BLACK)
@@ -373,8 +373,8 @@ class MainActivity : Activity() {
 
     private fun showAppInfo() {
         val version = try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.3.7"
-        } catch (_: Exception) { "0.3.7" }
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "0.4.2"
+        } catch (_: Exception) { "0.4.2" }
         val infoLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(10), dp(20), dp(10))
@@ -390,7 +390,7 @@ class MainActivity : Activity() {
             scaleType = ImageView.ScaleType.FIT_CENTER
             contentDescription = "Easy Navi Starter 앱 아이콘"
         }
-        appInfoRow.addView(appLogo, LinearLayout.LayoutParams(dp(64), dp(64)))
+        appInfoRow.addView(appLogo, LinearLayout.LayoutParams(dp(56), dp(56)))
         val appText = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
