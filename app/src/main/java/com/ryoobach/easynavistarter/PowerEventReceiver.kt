@@ -17,7 +17,7 @@ class PowerEventReceiver : BroadcastReceiver() {
             Intent.ACTION_POWER_DISCONNECTED -> {
                 Log.i(TAG, "Power disconnected")
                 if (prefs.getBoolean(MainActivity.KEY_SHUTDOWN, false)) {
-                    PowerMenuAccessibilityService.requestCloseNavigationAndLockScreen()
+                    PowerMenuAccessibilityService.requestCloseNavigationAndShowPowerMenu()
                 }
             }
             Intent.ACTION_BOOT_COMPLETED -> {
