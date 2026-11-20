@@ -12,6 +12,8 @@ val hasReleaseSigning = !releaseStorePath.isNullOrBlank() &&
     !releaseKeyAlias.isNullOrBlank() &&
     !releaseKeyPassword.isNullOrBlank()
 
+val persistentDebugKeystore = file(System.getProperty("user.home") + "/.android/debug.keystore")
+
 android {
     namespace = "com.ryoobach.easynavistarter"
     compileSdk = 35
@@ -21,6 +23,14 @@ android {
         targetSdk = 35
         versionCode = 23
         versionName = "0.4.1"
+    }
+    signingConfigs {
+        create("persistentDebug") {
+            storeFile = persistentDebugKeystore
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
     if (hasReleaseSigning) {
         signingConfigs {
@@ -33,6 +43,9 @@ android {
         }
     }
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("persistentDebug")
+        }
         release {
             isMinifyEnabled = false
             if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
