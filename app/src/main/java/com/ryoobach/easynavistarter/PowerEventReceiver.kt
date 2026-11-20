@@ -35,9 +35,9 @@ class PowerEventReceiver : BroadcastReceiver() {
                 else -> "알 수 없음($status)"
             }
             val plugText = when {
-                plugged and BatteryManager.BATTERY_PLUGGED_USB != 0 -> "USB"
-                plugged and BatteryManager.BATTERY_PLUGGED_AC != 0 -> "AC"
-                Build.VERSION.SDK_INT >=  wirelessApiLevel() && plugged and BatteryManager.BATTERY_PLUGGED_WIRELESS != 0 -> "무선"
+                (plugged and BatteryManager.BATTERY_PLUGGED_USB) != 0 -> "USB"
+                (plugged and BatteryManager.BATTERY_PLUGGED_AC) != 0 -> "AC"
+                (plugged and BatteryManager.BATTERY_PLUGGED_WIRELESS) != 0 -> "무선"
                 plugged == 0 -> "연결 없음"
                 else -> "기타($plugged)"
             }
@@ -152,8 +152,6 @@ class PowerEventReceiver : BroadcastReceiver() {
             .putLong(MainActivity.KEY_DIAG_RESULT_TIME, System.currentTimeMillis())
             .commit()
     }
-
-    private fun wirelessApiLevel() = 28
 
     companion object {
         private const val TAG = "EasyNaviPower"
