@@ -71,6 +71,14 @@ jobs:
           test -n "$KEYSTORE_SHA256"
           echo "EXPECTED_SIGNING_SHA256=$KEYSTORE_SHA256" >> "$GITHUB_ENV"
 
+      - name: Apply repository app and collaboration icons
+        run: |
+          mkdir -p app/src/main/res/drawable-nodpi
+          test -s app_icon.png
+          test -s js_logo.png
+          cp app_icon.png app/src/main/res/drawable-nodpi/easy_navi_launcher.png
+          cp js_logo.png app/src/main/res/drawable-nodpi/js_logo.png
+
       - name: Build signed APK
         run: gradle assembleRelease
 
