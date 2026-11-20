@@ -126,16 +126,16 @@ class MainActivity : Activity() {
 
         val shutdownCard = card()
         autoShutdown = CheckBox(this).apply {
-            text = "충전 종료 시 내비 종료 및 휴대폰 전원 끄기"
+            text = "충전 케이블 분리 시 내비 종료 및 화면 잠금"
             textSize = 19f
             setTextColor(Color.BLACK)
             buttonTintList = android.content.res.ColorStateList.valueOf(Color.BLACK)
             isChecked = prefs.getBoolean(KEY_SHUTDOWN, false)
         }
         shutdownCard.addView(autoShutdown)
-        shutdownCard.addView(description("충전 케이블을 분리하면 먼저 확인 알림이 나타납니다.\n[예]를 누르면 내비게이션을 종료하고 시스템 전원 메뉴를 표시합니다.\n아래 버튼에서 접근성 서비스를 한 번 켜 주세요."))
+        shutdownCard.addView(description("충전 케이블을 분리하면 내비게이션 화면에서 홈 화면으로 이동한 뒤 화면을 잠급니다.\n아래 버튼에서 접근성 서비스를 한 번 켜 주세요.\n※ 다른 앱 강제 종료와 휴대폰 완전 전원 끄기는 일반 앱 권한으로 지원되지 않습니다."))
         val accessibilityButton = Button(this).apply {
-            text = "전원 메뉴 호출 권한 설정"
+            text = "화면 잠금 기능 권한 설정"
             textSize = 15f
             isAllCaps = false
             setTextColor(Color.BLACK)
