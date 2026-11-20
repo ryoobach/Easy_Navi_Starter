@@ -377,29 +377,67 @@ class MainActivity : Activity() {
         } catch (_: Exception) { "0.3.7" }
         val infoLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(24), dp(8), dp(24), dp(8))
+            setPadding(dp(20), dp(10), dp(20), dp(10))
+        }
+
+        // 첫 번째 줄: 앱 아이콘 + 앱 이름, 그 아래 작은 버전 표기
+        val appInfoRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val appLogo = ImageView(this).apply {
+            setImageResource(R.drawable.easy_navi_launcher)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = "Easy Navi Starter 앱 아이콘"
+        }
+        appInfoRow.addView(appLogo, LinearLayout.LayoutParams(dp(64), dp(64)))
+        val appText = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), 0, 0, 0)
+        }
+        appText.addView(TextView(this).apply {
+            text = "Easy Navi Starter"
+            textSize = 19f
+            setTextColor(Color.BLACK)
+            setTypeface(null, Typeface.BOLD)
+        })
+        appText.addView(TextView(this).apply {
+            text = "버전 $version"
+            textSize = 13f
+            setTextColor(Color.GRAY)
+            setPadding(0, dp(4), 0, 0)
+        })
+        appInfoRow.addView(appText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        infoLayout.addView(appInfoRow)
+
+        val separator = TextView(this).apply {
+            text = ""
+            setBackgroundColor(Color.rgb(225, 225, 225))
+        }
+        val separatorParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1))
+        separatorParams.topMargin = dp(16)
+        separatorParams.bottomMargin = dp(16)
+        infoLayout.addView(separator, separatorParams)
+
+        // 두 번째 줄: JS 협업 로고 + 협업자 이름
+        val collaborationRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
         val collaborationLogo = ImageView(this).apply {
             setImageResource(R.drawable.js_logo)
             scaleType = ImageView.ScaleType.FIT_CENTER
             contentDescription = "JS 협업 로고"
         }
-        infoLayout.addView(collaborationLogo, LinearLayout.LayoutParams(dp(184), dp(184)))
-        infoLayout.addView(TextView(this).apply {
+        collaborationRow.addView(collaborationLogo, LinearLayout.LayoutParams(dp(64), dp(64)))
+        collaborationRow.addView(TextView(this).apply {
             text = "Ryoo jaesang & 최피디"
             textSize = 16f
             setTextColor(Color.DKGRAY)
-            gravity = Gravity.CENTER
-            setPadding(0, dp(12), 0, dp(4))
-        })
-        infoLayout.addView(TextView(this).apply {
-            text = "Easy Navi Starter\n버전 $version\nAndroid"
-            textSize = 14f
-            setTextColor(Color.GRAY)
-            gravity = Gravity.CENTER
-            setPadding(0, dp(8), 0, dp(4))
-        })
+            setPadding(dp(14), 0, 0, 0)
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        infoLayout.addView(collaborationRow)
         AlertDialog.Builder(this)
             .setTitle("앱 정보")
             .setView(infoLayout)
