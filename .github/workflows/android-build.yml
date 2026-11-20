@@ -40,6 +40,14 @@ jobs:
             keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
 
+      - name: Apply repository app and collaboration icons
+        run: |
+          mkdir -p app/src/main/res/drawable-nodpi
+          test -s app_icon.png
+          test -s js_logo.png
+          cp app_icon.png app/src/main/res/drawable-nodpi/easy_navi_launcher.png
+          cp js_logo.png app/src/main/res/drawable-nodpi/js_logo.png
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -54,7 +62,7 @@ jobs:
           APK="app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           grep -q 'applicationId = "com.ryoobach.easynavistarter"' app/build.gradle.kts
-          grep -q 'versionCode = 20' app/build.gradle.kts
+          grep -q 'versionCode = 21' app/build.gradle.kts
           grep -q 'versionName = "0.3.8"' app/build.gradle.kts
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           echo "APK file exists, Gradle identity/version checked, and APK signature verified."
@@ -62,12 +70,12 @@ jobs:
       - name: Package APK
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/Easy_Navi_Starter_0.3.8.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/Easy_Navi_Starter_0.3.9.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Easy_Navi_Starter_0.3.8
+          name: Easy_Navi_Starter_0.3.9
           path: dist/Easy_Navi_Starter_0.3.8.apk
           if-no-files-found: error
           retention-days: 30
