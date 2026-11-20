@@ -48,7 +48,11 @@ android {
         }
         release {
             isMinifyEnabled = false
-            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("persistentDebug")
+            }
         }
     }
     compileOptions {
