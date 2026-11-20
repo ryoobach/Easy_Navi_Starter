@@ -1,12 +1,15 @@
 package com.ryoobach.easynavistarter
 
 import android.accessibilityservice.AccessibilityService
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 
+/**
+ * Handles the user-authorized power menu action after charger disconnection.
+ * A regular third-party app cannot silently power off an Android device.
+ */
 class PowerMenuAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
 
@@ -28,20 +31,13 @@ class PowerMenuAccessibilityService : AccessibilityService() {
         super.onDestroy()
     }
 
-    private fun closeNavigationAndLockScreen() {
-        // 일반 앱은 다른 앱을 강제 종료할 수 없으므로 내비 화면에서 홈으로 이동합니다.
+    private fun showPowerMenuAfterLeavingNavigation() {
         val movedHome = performGlobalAction(GLOBAL_ACTION_HOME)
         Log.i(TAG, "HOME requested after power disconnect: $movedHome")
 
         handler.postDelayed({
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                val locked = performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
-                Log.i(TAG, "Screen lock requested: $locked")
-            } else {
-                // Android 8/8.1에는 화면 잠금 접근성 액션이 없어 시스템 전원 메뉴를 표시합니다.
-                val shown = performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)
-                Log.i(TAG, "Power dialog fallback requested: $shown")
-            }
+            val shown = performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)
+            Log.i(TAG, "System power menu requested: $shown")
         }, 700L)
     }
 
@@ -49,13 +45,13 @@ class PowerMenuAccessibilityService : AccessibilityService() {
         private const val TAG = "EasyNaviPowerMenu"
         @Volatile private var instance: PowerMenuAccessibilityService? = null
 
-        fun requestCloseNavigationAndLockScreen() {
+        fun requestCloseNavigationAndShowPowerMenu() {
             val service = instance
             if (service == null) {
-                Log.w(TAG, "Accessibility service is not enabled; cannot leave navigation or lock screen")
+                Log.w(TAG, "Accessibility service is not enabled; cannot leave navigation or show power menu")
                 return
             }
-            service.handler.post { service.closeNavigationAndLockScreen() }
+            service.handler.post { service.showPowerMenuAfterLeavingNavigation() }
         }
     }
 }
