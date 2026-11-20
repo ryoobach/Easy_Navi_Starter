@@ -4,6 +4,9 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
+import android.content.ContentValues
+import android.os.Environment
+import android.provider.MediaStore
 import android.provider.Settings
 import android.content.SharedPreferences
 import android.graphics.Color
@@ -44,6 +47,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        DiagnosticLogger.log(this, "이지 네비 스타터 앱 시작")
         val storedPackage = prefs.getString(KEY_PACKAGE, "") ?: ""
         // 구버전에서 저장한 티맵 패키지명을 현재 패키지명으로 이전합니다.
         selectedPackage = if (
@@ -129,7 +133,7 @@ class MainActivity : Activity() {
         bootCard.addView(overlayPermissionButton)
         page.addView(bootCard)
 
-        page.addView(sectionTitle("부팅 실행 진단"))
+        page.addView(sectionTitle("시스템 진단"))
         val diagnosticCard = card()
         bootDiagnostics = TextView(this).apply {
             textSize = 14f
@@ -137,6 +141,11 @@ class MainActivity : Activity() {
             setPadding(dp(2), dp(2), dp(2), dp(2))
         }
         diagnosticCard.addView(bootDiagnostics)
+        diagnosticCard.addView(Button(this).apply {
+            text = "진단 내용 TXT 저장"
+            isAllCaps = false
+            setOnClickListener { exportSystemDiagnostics() }
+        })
         page.addView(diagnosticCard)
         refreshBootDiagnostics()
 
@@ -190,12 +199,70 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        DiagnosticLogger.log(this, "앱 화면 복귀 또는 표시(onResume)")
         if (::bootDiagnostics.isInitialized) refreshBootDiagnostics()
         if (::overlayPermissionButton.isInitialized) {
             overlayPermissionButton.text = if (Settings.canDrawOverlays(this)) {
                 "부팅 화면 표시 권한 허용됨"
             } else {
                 "부팅 화면 표시 권한 설정"
+            }
+        }
+    }
+
+    override fun onPause() {
+        DiagnosticLogger.log(this, "앱 화면 일시중지(onPause)")
+        super.onPause()
+    }
+
+    override fun onStop() {
+        DiagnosticLogger.log(this, "앱 화면 가려짐(onStop)")
+        super.onStop()
+    }
+
+    private fun exportSystemDiagnostics() {
+        try {
+            val fileName = "EasyNavi_Diagnostic_" +
+                java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.KOREA).format(java.util.Date()) + ".txt"
+            if (Build.VERSION.SDK_INT >= 29) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/EasyNaviStarter")
+                }
+                val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: throw IllegalStateException("다운로드 폴더 파일을 만들지 못했습니다.")
+                contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use {
+                    it.write(DiagnosticLogger.readAll(this))
+                } ?: throw IllegalStateException("파일을 기록하지 못했습니다.")
+                Toast.makeText(this, "다운로드/EasyNaviStarter에 저장했습니다.\n$fileName", Toast.LENGTH_LONG).show()
+            } else {
+                val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TITLE, fileName)
+                }
+                startActivityForResult(intent, 2402)
+            }
+            DiagnosticLogger.log(this, "시스템 진단 TXT 내보내기 요청", fileName)
+        } catch (e: Exception) {
+            Toast.makeText(this, "진단 파일 저장 실패: ${e.message}", Toast.LENGTH_LONG).show()
+            DiagnosticLogger.log(this, "시스템 진단 TXT 저장 오류", e.message ?: e.javaClass.simpleName)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 2402 && resultCode == RESULT_OK) {
+            val uri = data?.data ?: return
+            try {
+                contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use {
+                    it.write(DiagnosticLogger.readAll(this))
+                }
+                Toast.makeText(this, "진단 파일을 저장했습니다.", Toast.LENGTH_LONG).show()
+                DiagnosticLogger.log(this, "시스템 진단 TXT 저장 완료", uri.toString())
+            } catch (e: Exception) {
+                Toast.makeText(this, "진단 파일 저장 실패: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -396,14 +463,17 @@ class MainActivity : Activity() {
             return
         }
         status.text = "설정을 저장했습니다."
+        DiagnosticLogger.log(this, "설정 저장", "내비게이션=$selectedLabel ($selectedPackage); 부팅 자동 실행=${autoLaunch.isChecked}")
         val launchIntent = getNavigationLaunchIntent(selectedPackage)
         if (launchIntent == null) {
             Toast.makeText(this, "선택한 내비게이션 앱을 실행할 수 없습니다.", Toast.LENGTH_LONG).show()
             return
         }
         try {
+            DiagnosticLogger.log(this, "사용자 설정 저장 후 내비게이션 실행 요청", selectedPackage)
             startActivity(launchIntent)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            DiagnosticLogger.log(this, "내비게이션 직접 실행 오류", e.message ?: e.javaClass.simpleName)
             Toast.makeText(this, "내비게이션 앱을 불러오지 못했습니다.", Toast.LENGTH_LONG).show()
         }
     }
