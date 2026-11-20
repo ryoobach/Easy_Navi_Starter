@@ -76,6 +76,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Easy_Navi_Starter_0.4.1
-          path: dist/Easy_Navi_Starter_0.3.9.apk
+          path: dist/Easy_Navi_Starter_0.4.1.apk
           if-no-files-found: error
           retention-days: 30
