@@ -76,13 +76,13 @@ object DiagnosticLogger {
             .toList()
             .takeLast(maxLines.coerceAtLeast(1))
         return buildString {
-            append("Easy Navi Starter 최근 진단 로그\\n")
-            append("앱 버전: ").append(appVersion(context)).append("\\n")
+            append("Easy Navi Starter 최근 진단 로그\n")
+            append("앱 버전: ").append(appVersion(context)).append("\n")
             append("Android: ").append(Build.VERSION.RELEASE)
-                .append(" (SDK ").append(Build.VERSION.SDK_INT).append(")\\n")
-            append("최근 이벤트: ").append(lines.size).append("줄 (최대 100줄)\\n")
-            append("----------------------------------------\\n")
-            lines.forEach { append(it).append('\\n') }
+                .append(" (SDK ").append(Build.VERSION.SDK_INT).append(")\n")
+            append("최근 이벤트: ").append(lines.size).append("줄 (최대 100줄)\n")
+            append("----------------------------------------\n")
+            lines.forEach { append(it).append('\n') }
         }
     }
 
