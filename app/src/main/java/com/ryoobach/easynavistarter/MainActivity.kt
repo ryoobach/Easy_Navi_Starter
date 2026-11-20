@@ -38,10 +38,20 @@ class MainActivity : Activity() {
 
     private data class NavApp(val label: String, val packageName: String)
 
-    private val builtInApps = listOf(
-        NavApp("티맵", "com.skt.tmap.ku"),
-        NavApp("네이버 지도", "com.nhn.android.nmap"),
-        NavApp("카카오맵", "net.daum.android.map")
+    // 국내외 주요 지도·내비게이션 앱 후보. 실제 설치 및 실행 가능한 앱만 표시합니다.
+    private val navigationCandidates = listOf(
+        "com.skt.tmap.ku",                 // 티맵
+        "com.skt.tmap",                    // 구형 티맵
+        "com.locnall.KimGiSa",             // 카카오내비
+        "net.daum.android.map",            // 카카오맵
+        "com.nhn.android.nmap",            // 네이버지도
+        "kr.mappers.AtlanSmart",           // 아틀란
+        "com.thinkware.inaviair",          // 아이나비 에어
+        "com.google.android.apps.maps",    // Google 지도
+        "com.waze",                        // Waze
+        "net.osmand",                      // OsmAnd
+        "com.sygic.aura",                  // Sygic GPS Navigation
+        "com.here.app.maps"                // HERE WeGo
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -330,21 +340,32 @@ class MainActivity : Activity() {
         prefs.edit().putStringSet(KEY_ADDED_NAV_APPS, addedNavigationApps.map { it.packageName }.toSet()).apply()
     }
 
-    // 한국에서 사용하는 내비게이션 브랜드로 확인되는 앱만 후보로 삼고,
-    // 실제 설치되어 있으며 실행 가능한 앱만 목록에 표시합니다.
+    // 사전에 등록한 패키지 후보와 기기의 설치 앱을 대조합니다.
+    // 패키지 가시성은 AndroidManifest의 MAIN/LAUNCHER queries로 확보합니다.
     private fun findInstalledNavigationApps(): List<NavApp> {
-        val knownPackages = builtInApps.map { it.packageName }.toSet()
-        val navigationNames = listOf("티맵", "t map", "tmap", "카카오맵", "네이버 지도", "아이나비", "아틀란", "맵피", "원내비")
-        return packageManager.getInstalledApplications(0)
-            .filter { it.packageName != packageName && packageManager.getLaunchIntentForPackage(it.packageName) != null }
-            .mapNotNull { info ->
-                val label = packageManager.getApplicationLabel(info).toString()
-                val normalized = label.lowercase()
-                if (info.packageName in knownPackages || info.packageName == "com.skt.tmap" || navigationNames.any { normalized.contains(it) }) {
-                    NavApp(label, info.packageName)
-                } else null
+        return navigationCandidates.mapNotNull { candidatePackage ->
+            try {
+                val appInfo = if (Build.VERSION.SDK_INT >= 33) {
+                    packageManager.getApplicationInfo(
+                        candidatePackage,
+                        PackageManager.ApplicationInfoFlags.of(0)
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    packageManager.getApplicationInfo(candidatePackage, 0)
+                }
+                if (candidatePackage == packageName ||
+                    packageManager.getLaunchIntentForPackage(candidatePackage) == null
+                ) return@mapNotNull null
+
+                val label = packageManager.getApplicationLabel(appInfo).toString()
+                NavApp(label, candidatePackage)
+            } catch (_: PackageManager.NameNotFoundException) {
+                null
+            } catch (_: Exception) {
+                null
             }
-            .distinctBy { it.packageName }
+        }.distinctBy { it.packageName }
             .sortedBy { it.label.lowercase() }
     }
 
