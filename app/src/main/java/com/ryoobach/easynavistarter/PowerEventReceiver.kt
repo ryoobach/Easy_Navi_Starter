@@ -13,6 +13,7 @@ import android.util.Log
 class PowerEventReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val prefs = context.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE)
+        DiagnosticLogger.log(context, "시스템 브로드캐스트 수신", "action=${intent.action ?: "null"}")
         when (intent.action) {
             Intent.ACTION_POWER_CONNECTED -> {
                 val battery = context.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
