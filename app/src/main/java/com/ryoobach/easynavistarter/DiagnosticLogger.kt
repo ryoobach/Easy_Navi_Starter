@@ -57,6 +57,35 @@ object DiagnosticLogger {
         }
     }
 
+    /** 전체 이벤트 로그를 화면에서 확인하기 위한 문자열입니다. */
+    @Synchronized
+    fun readEventLog(context: Context): String {
+        val previous = File(context.filesDir, "event_log_previous.txt")
+        val current = File(context.filesDir, EVENT_FILE)
+        return buildString {
+            if (previous.exists()) append(previous.readText(Charsets.UTF_8))
+            if (current.exists()) append(current.readText(Charsets.UTF_8))
+        }
+    }
+
+    /** 공유용으로 가장 최근 N줄만 반환합니다. */
+    @Synchronized
+    fun readRecentEventLines(context: Context, maxLines: Int = 100): String {
+        val lines = readEventLog(context).lineSequence()
+            .filter { it.isNotBlank() }
+            .toList()
+            .takeLast(maxLines.coerceAtLeast(1))
+        return buildString {
+            append("Easy Navi Starter 최근 진단 로그\\n")
+            append("앱 버전: ").append(appVersion(context)).append("\\n")
+            append("Android: ").append(Build.VERSION.RELEASE)
+                .append(" (SDK ").append(Build.VERSION.SDK_INT).append(")\\n")
+            append("최근 이벤트: ").append(lines.size).append("줄 (최대 100줄)\\n")
+            append("----------------------------------------\\n")
+            lines.forEach { append(it).append('\\n') }
+        }
+    }
+
     private fun appVersion(context: Context): String = try {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown"
     } catch (_: Exception) { "unknown" }
