@@ -5,6 +5,8 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -12,21 +14,49 @@ import android.util.Log
 
 class PowerEventReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val prefs = context.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE)
-        DiagnosticLogger.log(context, "시스템 브로드캐스트 수신", "action=${intent.action ?: "null"}")
-        when (intent.action) {
+        val action = intent.action ?: "null"
+        val battery = try {
+            context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        } catch (e: Exception) {
+            DiagnosticLogger.log(context, "배터리 상태 조회 오류", "${e.javaClass.simpleName}: ${e.message ?: "no message"}")
+            null
+        }
+        val batteryDetail = battery?.let {
+            val status = it.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+            val plugged = it.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
+            val level = it.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+            val scale = it.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+            val percent = if (level >= 0 && scale > 0) level * 100 / scale else -1
+            val statusText = when (status) {
+                BatteryManager.BATTERY_STATUS_CHARGING -> "충전 중"
+                BatteryManager.BATTERY_STATUS_FULL -> "완충"
+                BatteryManager.BATTERY_STATUS_DISCHARGING -> "방전 중"
+                BatteryManager.BATTERY_STATUS_NOT_CHARGING -> "충전 안 함"
+                else -> "알 수 없음($status)"
+            }
+            val plugText = when {
+                plugged and BatteryManager.BATTERY_PLUGGED_USB != 0 -> "USB"
+                plugged and BatteryManager.BATTERY_PLUGGED_AC != 0 -> "AC"
+                Build.VERSION.SDK_INT >=  wirelessApiLevel() && plugged and BatteryManager.BATTERY_PLUGGED_WIRELESS != 0 -> "무선"
+                plugged == 0 -> "연결 없음"
+                else -> "기타($plugged)"
+            }
+            "상태=$statusText; 전원=$plugText; 배터리=$percent%; plugged=$plugged"
+        } ?: "배터리 스냅샷 조회 불가"
+
+        DiagnosticLogger.log(context, "시스템 브로드캐스트 수신", "action=$action; $batteryDetail")
+        Log.i(TAG, "Broadcast received: action=$action; $batteryDetail")
+
+        when (action) {
             Intent.ACTION_POWER_CONNECTED -> {
-                val battery = context.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-                DiagnosticLogger.log(context, "충전 케이블 연결 이벤트 수신", "배터리 상태=${battery?.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1) ?: -1}")
-                Log.i(TAG, "Power connected: no navigation action")
+                DiagnosticLogger.log(context, "충전 전원 연결 감지", batteryDetail)
             }
             Intent.ACTION_POWER_DISCONNECTED -> {
-                val battery = context.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-                DiagnosticLogger.log(context, "충전 케이블 분리 이벤트 수신", "배터리 상태=${battery?.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1) ?: -1}; 앱 정책상 내비 종료/기기 전원 종료는 실행하지 않음")
-                Log.i(TAG, "Power disconnected; no privileged action requested")
+                DiagnosticLogger.log(context, "충전 전원 분리 감지", batteryDetail)
             }
             Intent.ACTION_BOOT_COMPLETED -> {
                 DiagnosticLogger.log(context, "기기 부팅 완료 이벤트 수신")
+                val prefs = context.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE)
                 val enabled = prefs.getBoolean(MainActivity.KEY_AUTO, true)
                 val savedPackage = prefs.getString(MainActivity.KEY_PACKAGE, null)
                 prefs.edit()
@@ -88,9 +118,7 @@ class PowerEventReceiver : BroadcastReceiver() {
         try {
             if (Build.VERSION.SDK_INT >= 34) {
                 val creatorOptions = ActivityOptions.makeBasic().apply {
-                    setPendingIntentCreatorBackgroundActivityStartMode(
-                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                    )
+                    setPendingIntentCreatorBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
                 }
                 val pendingIntent = PendingIntent.getActivity(
                     context, BOOT_NAV_REQUEST_CODE, launchIntent,
@@ -98,9 +126,7 @@ class PowerEventReceiver : BroadcastReceiver() {
                     creatorOptions.toBundle()
                 )
                 val senderOptions = ActivityOptions.makeBasic().apply {
-                    setPendingIntentBackgroundActivityStartMode(
-                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                    )
+                    setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
                 }
                 pendingIntent.send(context, 0, null, null, null, null, senderOptions.toBundle())
             } else {
@@ -110,10 +136,7 @@ class PowerEventReceiver : BroadcastReceiver() {
                 ).send()
             }
             DiagnosticLogger.log(context, "내비게이션 실행 요청 전송됨", "대상 패키지=$resolvedPackage; 실제 화면 표시 여부는 별도 확인 필요")
-            recordResult(
-                context,
-                "실행 요청 전송됨: $resolvedPackage. Android가 실제 화면 표시를 허용했는지는 별도 확인이 필요합니다."
-            )
+            recordResult(context, "실행 요청 전송됨: $resolvedPackage. Android가 실제 화면 표시를 허용했는지는 별도 확인이 필요합니다.")
             Log.i(TAG, "Boot navigation task launch requested for package=$resolvedPackage")
         } catch (e: Exception) {
             val detail = e.message ?: e.javaClass.simpleName
@@ -129,6 +152,8 @@ class PowerEventReceiver : BroadcastReceiver() {
             .putLong(MainActivity.KEY_DIAG_RESULT_TIME, System.currentTimeMillis())
             .commit()
     }
+
+    private fun wirelessApiLevel() = 28
 
     companion object {
         private const val TAG = "EasyNaviPower"
