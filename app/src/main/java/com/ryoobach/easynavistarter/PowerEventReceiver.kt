@@ -17,10 +17,9 @@ class PowerEventReceiver : BroadcastReceiver() {
                 Log.i(TAG, "Power connected: no navigation action")
             }
             Intent.ACTION_POWER_DISCONNECTED -> {
-                Log.i(TAG, "Power disconnected")
-                if (prefs.getBoolean(MainActivity.KEY_SHUTDOWN, false)) {
-                    PowerMenuAccessibilityService.requestCloseNavigationAndShowPowerMenu()
-                }
+                // 일반 앱 권한만으로 다른 앱을 강제 종료하거나 전원 메뉴를 띄울 수 없습니다.
+                // 민감한 접근성 서비스 선언은 보안 차단 방지를 위해 제거했습니다.
+                Log.i(TAG, "Power disconnected; no privileged action requested")
             }
             Intent.ACTION_BOOT_COMPLETED -> {
                 Log.i(TAG, "Boot completed; autoLaunch=${prefs.getBoolean(MainActivity.KEY_AUTO, true)}")
@@ -39,7 +38,6 @@ class PowerEventReceiver : BroadcastReceiver() {
             return
         }
 
-        // 티맵의 구형/현재 패키지명을 모두 확인합니다.
         val candidates = if (savedPackage == "com.skt.tmap" || savedPackage == "com.skt.tmap.ku") {
             listOf(savedPackage, "com.skt.tmap.ku", "com.skt.tmap").distinct()
         } else {
@@ -56,8 +54,6 @@ class PowerEventReceiver : BroadcastReceiver() {
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {
             if (Build.VERSION.SDK_INT >= 34) {
-                // Android 14+ requires explicit background-activity-launch opt-in
-                // on both the PendingIntent creator and sender sides.
                 val creatorOptions = ActivityOptions.makeBasic().apply {
                     setPendingIntentCreatorBackgroundActivityStartMode(
                         ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
