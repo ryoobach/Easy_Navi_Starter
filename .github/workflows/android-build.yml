@@ -60,20 +60,20 @@ jobs:
           APK="app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           grep -q 'applicationId = "com.ryoobach.easynavistarter"' app/build.gradle.kts
-          grep -q 'versionCode = 23' app/build.gradle.kts
-          grep -q 'versionName = "0.4.1"' app/build.gradle.kts
+          grep -q 'versionCode = 36' app/build.gradle.kts
+          grep -q 'versionName = "0.5.4"' app/build.gradle.kts
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           echo "APK file exists, Gradle identity/version checked, and APK signature verified."
 
       - name: Package APK
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/Easy_Navi_Starter_0.4.1.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/Easy_Navi_Starter_0.5.4.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Easy_Navi_Starter_0.4.1
+          name: Easy_Navi_Starter_0.5.4
           path: dist/Easy_Navi_Starter_0.4.1.apk
           if-no-files-found: error
           retention-days: 30
