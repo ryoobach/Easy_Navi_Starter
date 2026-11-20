@@ -436,10 +436,10 @@ class MainActivity : Activity() {
             scaleType = ImageView.ScaleType.FIT_CENTER
             contentDescription = "JS 협업 로고"
         }
-        collaborationRow.addView(collaborationLogo, LinearLayout.LayoutParams(dp(64), dp(64)))
+        collaborationRow.addView(collaborationLogo, LinearLayout.LayoutParams(dp(40), dp(40)))
         collaborationRow.addView(TextView(this).apply {
             text = "Ryoo jaesang & 최피디"
-            textSize = 16f
+            textSize = 13f
             setTextColor(Color.DKGRAY)
             setPadding(dp(14), 0, 0, 0)
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
