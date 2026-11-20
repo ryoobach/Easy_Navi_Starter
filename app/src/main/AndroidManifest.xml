@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 0.4.2 rebuild: verify the current power-menu receiver/service integration. -->
     <queries>
         <package android:name="com.skt.tmap.ku" />
         <package android:name="com.skt.tmap" />
