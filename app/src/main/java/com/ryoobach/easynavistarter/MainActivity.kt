@@ -408,6 +408,12 @@ class MainActivity : Activity() {
             setTextColor(Color.GRAY)
             setPadding(0, dp(4), 0, 0)
         })
+        appText.addView(TextView(this).apply {
+            text = "개발일 2026.11.20"
+            textSize = 12f
+            setTextColor(Color.GRAY)
+            setPadding(0, dp(2), 0, 0)
+        })
         appInfoRow.addView(appText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         infoLayout.addView(appInfoRow)
 
