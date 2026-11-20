@@ -314,8 +314,7 @@ class MainActivity : Activity() {
             .putString(KEY_LABEL, selectedLabel)
             .putStringSet(KEY_ADDED_NAV_APPS, addedNavigationApps.map { it.packageName }.toSet())
             .putBoolean(KEY_AUTO, autoLaunch.isChecked)
-            .putBoolean(KEY_SHUTDOWN, autoShutdown.isChecked)
-            .putBoolean(KEY_RESTORE_LAST_LOCATION, true)
+                        .putBoolean(KEY_RESTORE_LAST_LOCATION, true)
             .commit()
         if (!saved) {
             status.text = "설정을 저장하지 못했습니다."
