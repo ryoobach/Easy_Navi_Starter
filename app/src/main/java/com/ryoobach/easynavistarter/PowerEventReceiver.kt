@@ -203,5 +203,6 @@ class PowerEventReceiver : BroadcastReceiver() {
         private const val TAG = "EasyNaviPower"
         private const val BOOT_NAV_REQUEST_CODE = 7401
         private const val BOOT_LAUNCH_DELAY_MS = 5_000L
+        private const val POWER_STATE_VERIFY_DELAY_MS = 1_000L
     }
 }
