@@ -31,40 +31,57 @@ object DiagnosticLogger {
 
     private fun appendRotating(file: File, backupName: String, line: String) {
         if (file.exists() && file.length() + line.toByteArray(Charsets.UTF_8).size > MAX_BYTES) {
-            val backup = File(file.parentFile, backupName)
-            if (backup.exists()) backup.delete()
-            file.renameTo(backup)
+            val backupStem = backupName.removeSuffix(".txt")
+            val backupNames = listOf(
+                backupName,
+                "${backupStem}_2.txt",
+                "${backupStem}_3.txt"
+            )
+            for (index in backupNames.lastIndex downTo 1) {
+                val destination = File(file.parentFile, backupNames[index])
+                val source = File(file.parentFile, backupNames[index - 1])
+                if (destination.exists()) destination.delete()
+                if (source.exists()) source.renameTo(destination)
+            }
+            val newestBackup = File(file.parentFile, backupNames[0])
+            if (newestBackup.exists()) newestBackup.delete()
+            file.renameTo(newestBackup)
         }
         file.appendText(line, Charsets.UTF_8)
     }
 
     fun readAll(context: Context): String {
-        val header = "Easy Navi Starter 시스템 진단\n앱 버전: ${appVersion(context)}\nAndroid: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})\n기기: ${Build.MANUFACTURER} ${Build.MODEL}\n----------------------------------------\n"
-        val diagnosticPrevious = File(context.filesDir, "system_diagnostics_previous.txt")
-        val diagnosticCurrent = File(context.filesDir, DIAGNOSTIC_FILE)
-        val eventPrevious = File(context.filesDir, "event_log_previous.txt")
-        val eventCurrent = File(context.filesDir, EVENT_FILE)
+        val header = "Easy Navi Starter 시스템 진단\\n앱 버전: ${appVersion(context)}\\nAndroid: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})\\n기기: ${Build.MANUFACTURER} ${Build.MODEL}\\n----------------------------------------\\n"
         return buildString {
             append(header)
-            append("[진단 로그]\n")
-            if (diagnosticPrevious.exists()) append("[이전 기록 보관본]\n").append(diagnosticPrevious.readText(Charsets.UTF_8))
-            if (diagnosticCurrent.exists()) append(diagnosticCurrent.readText(Charsets.UTF_8))
-            else append("아직 기록이 없습니다.\n")
-            append("\n----------------------------------------\n[별도 이벤트 로그: event_log.txt]\n")
-            if (eventPrevious.exists()) append("[이전 이벤트 기록 보관본]\n").append(eventPrevious.readText(Charsets.UTF_8))
-            if (eventCurrent.exists()) append(eventCurrent.readText(Charsets.UTF_8))
-            else append("아직 이벤트 기록이 없습니다.\n")
+            append("[진단 로그]\\n")
+            val diagnosticText = readRotatedLog(context, DIAGNOSTIC_FILE, "system_diagnostics_previous.txt")
+            if (diagnosticText.isNotEmpty()) append(diagnosticText) else append("아직 기록이 없습니다.\\n")
+            append("\\n----------------------------------------\\n[별도 이벤트 로그: event_log.txt]\\n")
+            val eventText = readRotatedLog(context, EVENT_FILE, "event_log_previous.txt")
+            if (eventText.isNotEmpty()) append(eventText) else append("아직 이벤트 기록이 없습니다.\\n")
         }
     }
 
     /** 전체 이벤트 로그를 화면에서 확인하기 위한 문자열입니다. */
     @Synchronized
-    fun readEventLog(context: Context): String {
-        val previous = File(context.filesDir, "event_log_previous.txt")
-        val current = File(context.filesDir, EVENT_FILE)
+    fun readEventLog(context: Context): String =
+        readRotatedLog(context, EVENT_FILE, "event_log_previous.txt")
+
+    private fun readRotatedLog(context: Context, currentName: String, backupName: String): String {
+        val backupStem = backupName.removeSuffix(".txt")
+        val names = listOf(
+            "${backupStem}_3.txt",
+            "${backupStem}_2.txt",
+            "${backupStem}_1.txt",
+            backupName,
+            currentName
+        )
         return buildString {
-            if (previous.exists()) append(previous.readText(Charsets.UTF_8))
-            if (current.exists()) append(current.readText(Charsets.UTF_8))
+            names.forEach { name ->
+                val file = File(context.filesDir, name)
+                if (file.exists()) append(file.readText(Charsets.UTF_8))
+            }
         }
     }
 
