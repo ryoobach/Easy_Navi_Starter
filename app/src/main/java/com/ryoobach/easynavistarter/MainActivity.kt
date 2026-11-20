@@ -158,6 +158,16 @@ class MainActivity : Activity() {
             isAllCaps = false
             setOnClickListener { exportSystemDiagnostics() }
         })
+        diagnosticCard.addView(Button(this).apply {
+            text = "로그 기록 보기"
+            isAllCaps = false
+            setOnClickListener { showEventLogDialog() }
+        })
+        diagnosticCard.addView(Button(this).apply {
+            text = "최피디에게 로그 보내기"
+            isAllCaps = false
+            setOnClickListener { shareRecentLogs() }
+        })
         page.addView(diagnosticCard)
         refreshBootDiagnostics()
 
@@ -310,6 +320,43 @@ class MainActivity : Activity() {
             } catch (e: Exception) {
                 Toast.makeText(this, "진단 파일 저장 실패: ${e.message}", Toast.LENGTH_LONG).show()
             }
+        }
+    }
+
+    private fun showEventLogDialog() {
+        val logText = DiagnosticLogger.readEventLog(this)
+        val logView = TextView(this).apply {
+            text = if (logText.isBlank()) "아직 기록된 이벤트 로그가 없습니다." else logText
+            textSize = 12f
+            typeface = Typeface.MONOSPACE
+            setTextColor(Color.DKGRAY)
+            setTextIsSelectable(true)
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+        }
+        val logScroll = ScrollView(this).apply {
+            isFillViewport = true
+            addView(logView)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("이벤트 로그 전체 기록")
+            .setView(logScroll, dp(8), dp(4), dp(8), dp(4))
+            .setPositiveButton("닫기", null)
+            .show()
+    }
+
+    private fun shareRecentLogs() {
+        try {
+            val logText = DiagnosticLogger.readRecentEventLines(this, 100)
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Easy Navi Starter 최근 진단 로그")
+                putExtra(Intent.EXTRA_TEXT, logText)
+            }
+            startActivity(Intent.createChooser(shareIntent, "로그를 전달할 앱 선택"))
+            DiagnosticLogger.log(this, "최근 100줄 로그 공유 창 열기")
+        } catch (e: Exception) {
+            DiagnosticLogger.log(this, "최근 로그 공유 오류", e.message ?: e.javaClass.simpleName)
+            Toast.makeText(this, "로그 공유를 시작하지 못했습니다.", Toast.LENGTH_LONG).show()
         }
     }
 
