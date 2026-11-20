@@ -49,6 +49,14 @@ jobs:
             -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
 
+      - name: Apply repository app and collaboration icons
+        run: |
+          mkdir -p app/src/main/res/drawable-nodpi
+          test -s app_icon.png
+          test -s js_logo.png
+          cp app_icon.png app/src/main/res/drawable-nodpi/easy_navi_launcher.png
+          cp js_logo.png app/src/main/res/drawable-nodpi/js_logo.png
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
