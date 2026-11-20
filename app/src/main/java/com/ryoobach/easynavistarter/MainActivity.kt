@@ -27,6 +27,7 @@ class MainActivity : Activity() {
     private lateinit var autoLaunch: CheckBox
     private lateinit var overlayPermissionButton: Button
     private lateinit var status: TextView
+    private lateinit var bootDiagnostics: TextView
     private lateinit var navListContainer: LinearLayout
     private var selectedPackage = ""
     private var selectedLabel = ""
@@ -128,6 +129,17 @@ class MainActivity : Activity() {
         bootCard.addView(overlayPermissionButton)
         page.addView(bootCard)
 
+        page.addView(sectionTitle("부팅 실행 진단"))
+        val diagnosticCard = card()
+        bootDiagnostics = TextView(this).apply {
+            textSize = 14f
+            setTextColor(Color.DKGRAY)
+            setPadding(dp(2), dp(2), dp(2), dp(2))
+        }
+        diagnosticCard.addView(bootDiagnostics)
+        page.addView(diagnosticCard)
+        refreshBootDiagnostics()
+
         page.addView(sectionTitle("내비게이션 선택"))
         val navCard = card()
         navListContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -178,6 +190,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (::bootDiagnostics.isInitialized) refreshBootDiagnostics()
         if (::overlayPermissionButton.isInitialized) {
             overlayPermissionButton.text = if (Settings.canDrawOverlays(this)) {
                 "부팅 화면 표시 권한 허용됨"
@@ -185,6 +198,24 @@ class MainActivity : Activity() {
                 "부팅 화면 표시 권한 설정"
             }
         }
+    }
+
+    private fun refreshBootDiagnostics() {
+        val bootTime = prefs.getLong(KEY_DIAG_BOOT_TIME, 0L)
+        val attemptTime = prefs.getLong(KEY_DIAG_ATTEMPT_TIME, 0L)
+        val resultTime = prefs.getLong(KEY_DIAG_RESULT_TIME, 0L)
+        val bootPackage = prefs.getString(KEY_DIAG_BOOT_PACKAGE, "") ?: ""
+        val result = prefs.getString(KEY_DIAG_RESULT, "아직 부팅 진단 기록이 없습니다.") ?: ""
+        fun displayTime(value: Long): String =
+            if (value <= 0L) "기록 없음"
+            else java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.KOREA)
+                .format(java.util.Date(value))
+        bootDiagnostics.text = "마지막 부팅 이벤트: ${displayTime(bootTime)}\n" +
+            "부팅 당시 저장된 앱: ${if (bootPackage.isBlank()) "없음" else bootPackage}\n" +
+            "실행 요청 시각: ${displayTime(attemptTime)}\n" +
+            "결과 기록 시각: ${displayTime(resultTime)}\n" +
+            "진단 결과: $result\n\n" +
+            "※ '실행 요청 전송됨'은 Android에 실행을 요청했다는 뜻이며, 실제 화면 표시를 보장하지 않습니다."
     }
 
     private fun openOverlayPermissionSettings() {
@@ -489,5 +520,10 @@ class MainActivity : Activity() {
         const val KEY_SHUTDOWN = "auto_shutdown_on_unplug"
         const val KEY_RESTORE_LAST_LOCATION = "restore_last_location"
         const val KEY_BOOT = "restore_on_boot"
+        const val KEY_DIAG_BOOT_TIME = "diag_boot_time"
+        const val KEY_DIAG_ATTEMPT_TIME = "diag_attempt_time"
+        const val KEY_DIAG_RESULT_TIME = "diag_result_time"
+        const val KEY_DIAG_BOOT_PACKAGE = "diag_boot_package"
+        const val KEY_DIAG_RESULT = "diag_result"
     }
 }
