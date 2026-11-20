@@ -46,26 +46,32 @@ jobs:
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "application_id=$APPLICATION_ID" >> "$GITHUB_OUTPUT"
 
-      - name: Prepare persistent release signing key
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Restore persistent debug signing key
+        id: debug-key-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: easy-navi-starter-debug-signing-key-v1
+
+      - name: Create debug signing key on first build only
+        if: steps.debug-key-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/easy-navi-release.jks"
-          test -s "$RUNNER_TEMP/easy-navi-release.jks" || (echo "Decoded keystore is empty" && exit 1)
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/easy-navi-release.jks" >> "$GITHUB_ENV"
-          KEYSTORE_SHA256="$(keytool -list -v -keystore "$RUNNER_TEMP/easy-navi-release.jks" -alias "$ANDROID_KEY_ALIAS" -storepass "$ANDROID_KEYSTORE_PASSWORD" | awk '/SHA256:/{print $2; exit}' | tr -d ':' | tr '[:lower:]' '[:upper:]')"
-          test -n "$KEYSTORE_SHA256" || (echo "Could not read signing certificate fingerprint" && exit 1)
+          mkdir -p ~/.android
+          keytool -genkeypair -v -keystore ~/.android/debug.keystore \
+            -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Verify persistent signing key
+        shell: bash
+        run: |
+          test -s ~/.android/debug.keystore
+          KEYSTORE_SHA256="$(keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android | awk '/SHA256:/{print $2; exit}' | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          test -n "$KEYSTORE_SHA256"
           echo "EXPECTED_SIGNING_SHA256=$KEYSTORE_SHA256" >> "$GITHUB_ENV"
 
       - name: Build signed APK
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: gradle assembleRelease
 
       - name: Verify APK identity, version, and signature
