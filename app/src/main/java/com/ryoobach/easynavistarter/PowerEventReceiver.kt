@@ -14,20 +14,23 @@ class PowerEventReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val prefs = context.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE)
         when (intent.action) {
-            Intent.ACTION_POWER_CONNECTED -> {
-                // 케이블 연결은 내비 자동 실행 조건이 아닙니다.
-                Log.i(TAG, "Power connected: no navigation action")
-            }
-            Intent.ACTION_POWER_DISCONNECTED -> {
-                // 일반 앱 권한만으로 다른 앱을 강제 종료하거나 전원 메뉴를 띄울 수 없습니다.
-                Log.i(TAG, "Power disconnected; no privileged action requested")
-            }
+            Intent.ACTION_POWER_CONNECTED -> Log.i(TAG, "Power connected: no navigation action")
+            Intent.ACTION_POWER_DISCONNECTED -> Log.i(TAG, "Power disconnected; no privileged action requested")
             Intent.ACTION_BOOT_COMPLETED -> {
                 val enabled = prefs.getBoolean(MainActivity.KEY_AUTO, true)
                 val savedPackage = prefs.getString(MainActivity.KEY_PACKAGE, null)
+                prefs.edit()
+                    .putLong(MainActivity.KEY_DIAG_BOOT_TIME, System.currentTimeMillis())
+                    .putString(MainActivity.KEY_DIAG_BOOT_PACKAGE, savedPackage ?: "")
+                    .putString(
+                        MainActivity.KEY_DIAG_RESULT,
+                        if (enabled) "부팅 이벤트 수신됨. 5초 후 실행 요청 예정."
+                        else "부팅 이벤트 수신됨. 자동 실행 설정이 꺼져 있음."
+                    )
+                    .putLong(MainActivity.KEY_DIAG_RESULT_TIME, System.currentTimeMillis())
+                    .commit()
                 Log.i(TAG, "Boot completed; autoLaunch=$enabled; savedPackage=$savedPackage")
                 if (enabled) {
-                    // 부팅 직후 패키지/런처 초기화 시간을 준 뒤 기존 앱 작업 복귀 또는 신규 실행을 요청합니다.
                     val pending = goAsync()
                     Handler(Looper.getMainLooper()).postDelayed({
                         try {
@@ -44,31 +47,31 @@ class PowerEventReceiver : BroadcastReceiver() {
     private fun launchNavigation(context: Context) {
         val prefs = context.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE)
         val savedPackage = prefs.getString(MainActivity.KEY_PACKAGE, null)
+        prefs.edit()
+            .putLong(MainActivity.KEY_DIAG_ATTEMPT_TIME, System.currentTimeMillis())
+            .putString(MainActivity.KEY_DIAG_RESULT, "내비게이션 실행 요청 준비 중.")
+            .commit()
+
         if (savedPackage.isNullOrBlank()) {
-            Log.w(TAG, "Boot launch skipped: no saved navigation package")
+            recordResult(context, "실행 실패: 저장된 내비게이션 앱이 없습니다.")
             return
         }
 
         val candidates = if (savedPackage == "com.skt.tmap" || savedPackage == "com.skt.tmap.ku") {
             listOf(savedPackage, "com.skt.tmap.ku", "com.skt.tmap").distinct()
-        } else {
-            listOf(savedPackage)
+        } else listOf(savedPackage)
+
+        val resolvedPackage = candidates.firstOrNull {
+            context.packageManager.getLaunchIntentForPackage(it) != null
         }
-        val launchIntent = candidates.firstNotNullOfOrNull {
-            context.packageManager.getLaunchIntentForPackage(it)
-        }
+        val launchIntent = resolvedPackage?.let { context.packageManager.getLaunchIntentForPackage(it) }
         if (launchIntent == null) {
-            Log.w(TAG, "Boot launch skipped: no launchable activity for saved package=$savedPackage")
+            recordResult(context, "실행 실패: 앱 실행 화면을 찾지 못했습니다. 저장 패키지=$savedPackage")
+            Log.w(TAG, "No launchable activity for saved package=$savedPackage")
             return
         }
 
-        // NEW_TASK: 해당 앱의 기존 task가 남아 있으면 앞으로 가져오고,
-        // task가 없으면 새 task를 시작하도록 Android의 task 관리에 맡깁니다.
-        // RESET_TASK_IF_NEEDED: 런처 실행 시 적용되는 task 복원/초기화 동작을 요청합니다.
-        launchIntent.addFlags(
-            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-        )
-
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
         try {
             if (Build.VERSION.SDK_INT >= 34) {
                 val creatorOptions = ActivityOptions.makeBasic().apply {
@@ -77,9 +80,7 @@ class PowerEventReceiver : BroadcastReceiver() {
                     )
                 }
                 val pendingIntent = PendingIntent.getActivity(
-                    context,
-                    BOOT_NAV_REQUEST_CODE,
-                    launchIntent,
+                    context, BOOT_NAV_REQUEST_CODE, launchIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                     creatorOptions.toBundle()
                 )
@@ -88,22 +89,30 @@ class PowerEventReceiver : BroadcastReceiver() {
                         ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
                     )
                 }
-                pendingIntent.send(
-                    context, 0, null, null, null, null, senderOptions.toBundle()
-                )
+                pendingIntent.send(context, 0, null, null, null, null, senderOptions.toBundle())
             } else {
-                val pendingIntent = PendingIntent.getActivity(
-                    context,
-                    BOOT_NAV_REQUEST_CODE,
-                    launchIntent,
+                PendingIntent.getActivity(
+                    context, BOOT_NAV_REQUEST_CODE, launchIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                pendingIntent.send()
+                ).send()
             }
-            Log.i(TAG, "Boot navigation task launch requested for saved package=$savedPackage; Android will reuse an eligible existing task or create one")
+            recordResult(
+                context,
+                "실행 요청 전송됨: $resolvedPackage. Android가 실제 화면 표시를 허용했는지는 별도 확인이 필요합니다."
+            )
+            Log.i(TAG, "Boot navigation task launch requested for package=$resolvedPackage")
         } catch (e: Exception) {
-            Log.e(TAG, "Boot navigation launch failed for saved package=$savedPackage", e)
+            val detail = e.message ?: e.javaClass.simpleName
+            recordResult(context, "실행 요청 오류: $detail")
+            Log.e(TAG, "Boot navigation launch failed for package=$savedPackage", e)
         }
+    }
+
+    private fun recordResult(context: Context, result: String) {
+        context.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).edit()
+            .putString(MainActivity.KEY_DIAG_RESULT, result)
+            .putLong(MainActivity.KEY_DIAG_RESULT_TIME, System.currentTimeMillis())
+            .commit()
     }
 
     companion object {
