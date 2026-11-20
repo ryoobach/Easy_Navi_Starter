@@ -35,6 +35,7 @@ class MainActivity : Activity() {
     private var selectedPackage = ""
     private var selectedLabel = ""
     private val addedNavigationApps = mutableListOf<NavApp>()
+    private var powerEventReceiver: PowerEventReceiver? = null
 
     private data class NavApp(val label: String, val packageName: String)
 
@@ -58,6 +59,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         DiagnosticLogger.log(this, "이지 네비 스타터 앱 시작")
+        registerPowerEventReceiver()
         val storedPackage = prefs.getString(KEY_PACKAGE, "") ?: ""
         // 구버전에서 저장한 티맵 패키지명을 현재 패키지명으로 이전합니다.
         selectedPackage = if (
@@ -205,6 +207,40 @@ class MainActivity : Activity() {
         scroll.addView(page)
         setContentView(scroll)
         requestNotificationPermissionIfNeeded()
+    }
+
+    private fun registerPowerEventReceiver() {
+        if (powerEventReceiver != null) return
+        val filter = android.content.IntentFilter().apply {
+            addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_POWER_DISCONNECTED)
+        }
+        val receiver = PowerEventReceiver()
+        try {
+            if (Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(receiver, filter, android.content.Context.RECEIVER_EXPORTED)
+            } else {
+                @Suppress("DEPRECATION")
+                registerReceiver(receiver, filter)
+            }
+            powerEventReceiver = receiver
+            DiagnosticLogger.log(this, "충전 감지 수신기 동적 등록 완료", "앱 프로세스가 살아 있는 동안 연결/분리 이벤트를 감시합니다.")
+        } catch (e: Exception) {
+            DiagnosticLogger.log(this, "충전 감지 수신기 등록 오류", "${e.javaClass.simpleName}: ${e.message ?: "no message"}")
+        }
+    }
+
+    override fun onDestroy() {
+        powerEventReceiver?.let { receiver ->
+            try {
+                unregisterReceiver(receiver)
+                DiagnosticLogger.log(this, "충전 감지 수신기 동적 해제")
+            } catch (e: Exception) {
+                DiagnosticLogger.log(this, "충전 감지 수신기 해제 오류", e.message ?: e.javaClass.simpleName)
+            }
+        }
+        powerEventReceiver = null
+        super.onDestroy()
     }
 
     override fun onResume() {
