@@ -3,6 +3,8 @@ package com.ryoobach.easynavistarter
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.Typeface
@@ -23,6 +25,7 @@ import android.widget.Toast
 class MainActivity : Activity() {
     private lateinit var prefs: SharedPreferences
     private lateinit var autoLaunch: CheckBox
+    private lateinit var overlayPermissionButton: Button
     private lateinit var status: TextView
     private lateinit var navListContainer: LinearLayout
     private var selectedPackage = ""
@@ -112,7 +115,17 @@ class MainActivity : Activity() {
             isChecked = prefs.getBoolean(KEY_AUTO, true)
         }
         bootCard.addView(autoLaunch)
-        bootCard.addView(description("스마트 기기를 켜면 부팅이 되면서 아래의\n내비가 자동 실행됩니다."))
+        bootCard.addView(description("스마트 기기를 켜면 부팅이 되면서 아래의\n내비가 자동 실행됩니다.\n화면 자동 전환을 위해 아래 권한을 허용해 주세요."))
+        overlayPermissionButton = Button(this).apply {
+            text = if (Settings.canDrawOverlays(this@MainActivity)) {
+                "부팅 화면 표시 권한 허용됨"
+            } else {
+                "부팅 화면 표시 권한 설정"
+            }
+            isAllCaps = false
+            setOnClickListener { openOverlayPermissionSettings() }
+        }
+        bootCard.addView(overlayPermissionButton)
         page.addView(bootCard)
 
         page.addView(sectionTitle("내비게이션 선택"))
@@ -161,6 +174,37 @@ class MainActivity : Activity() {
         scroll.addView(page)
         setContentView(scroll)
         requestNotificationPermissionIfNeeded()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::overlayPermissionButton.isInitialized) {
+            overlayPermissionButton.text = if (Settings.canDrawOverlays(this)) {
+                "부팅 화면 표시 권한 허용됨"
+            } else {
+                "부팅 화면 표시 권한 설정"
+            }
+        }
+    }
+
+    private fun openOverlayPermissionSettings() {
+        if (Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "화면 자동 표시 권한이 이미 허용되어 있습니다.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("화면 자동 표시 권한")
+            .setMessage("기기를 재시작했을 때 티맵 화면을 앞으로 표시하려면 안드로이드의 특별 접근 권한이 필요합니다. 설정 화면에서 이지 네비 스타터의 '다른 앱 위에 표시'를 허용해 주세요.")
+            .setPositiveButton("권한 설정") { _, _ ->
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
+                )
+            }
+            .setNegativeButton("취소", null)
+            .show()
     }
 
     private fun requestNotificationPermissionIfNeeded() {
