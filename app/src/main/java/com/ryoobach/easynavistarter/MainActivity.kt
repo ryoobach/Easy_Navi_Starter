@@ -343,7 +343,7 @@ class MainActivity : Activity() {
     // 사전에 등록한 패키지 후보와 기기의 설치 앱을 대조합니다.
     // 패키지 가시성은 AndroidManifest의 MAIN/LAUNCHER queries로 확보합니다.
     private fun findInstalledNavigationApps(): List<NavApp> {
-        return navigationCandidates.mapNotNull { candidatePackage ->
+        val foundApps = navigationCandidates.mapNotNull { candidatePackage ->
             try {
                 val appInfo = if (Build.VERSION.SDK_INT >= 33) {
                     packageManager.getApplicationInfo(
@@ -367,6 +367,12 @@ class MainActivity : Activity() {
             }
         }.distinctBy { it.packageName }
             .sortedBy { it.label.lowercase() }
+        DiagnosticLogger.log(
+            this,
+            "내비게이션 후보 검색 완료",
+            "등록 후보=${navigationCandidates.size}; 설치 및 실행 가능=${foundApps.size}; 앱=${foundApps.joinToString { "${it.label}(${it.packageName})" }}"
+        )
+        return foundApps
     }
 
     private fun showAddNavigationDialog() {
