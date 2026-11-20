@@ -21,8 +21,8 @@ android {
         applicationId = "com.ryoobach.easynavistarter"
         minSdk = 26
         targetSdk = 35
-        versionCode = 30
-        versionName = "0.4.8"
+        versionCode = 31
+        versionName = "0.4.9"
     }
     signingConfigs {
         create("persistentDebug") {
