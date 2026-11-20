@@ -73,7 +73,7 @@ class MainActivity : Activity() {
             setPadding(dp(4), dp(2), dp(2), dp(8))
         }
         val logo = ImageView(this).apply {
-            setImageResource(com.ryoobach.easynavistarter.R.drawable.ic_launcher)
+            setImageResource(com.ryoobach.easynavistarter.R.drawable.easy_navi_launcher)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
         header.addView(logo, LinearLayout.LayoutParams(dp(66), dp(66)))
@@ -375,9 +375,34 @@ class MainActivity : Activity() {
         val version = try {
             packageManager.getPackageInfo(packageName, 0).versionName ?: "0.3.7"
         } catch (_: Exception) { "0.3.7" }
+        val infoLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(24), dp(8), dp(24), dp(8))
+        }
+        val collaborationLogo = ImageView(this).apply {
+            setImageResource(R.drawable.js_logo)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = "JS 협업 로고"
+        }
+        infoLayout.addView(collaborationLogo, LinearLayout.LayoutParams(dp(184), dp(184)))
+        infoLayout.addView(TextView(this).apply {
+            text = "Ryoo jaesang & 최피디"
+            textSize = 16f
+            setTextColor(Color.DKGRAY)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(12), 0, dp(4))
+        })
+        infoLayout.addView(TextView(this).apply {
+            text = "Easy Navi Starter\n버전 $version\nAndroid"
+            textSize = 14f
+            setTextColor(Color.GRAY)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(8), 0, dp(4))
+        })
         AlertDialog.Builder(this)
             .setTitle("앱 정보")
-            .setMessage("Easy Navi Starter\n버전 $version\nAndroid\n\nRyoo jaesang & 최피디")
+            .setView(infoLayout)
             .setPositiveButton("확인", null)
             .show()
     }
