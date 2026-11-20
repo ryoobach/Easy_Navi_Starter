@@ -339,7 +339,7 @@ class MainActivity : Activity() {
         }
         AlertDialog.Builder(this)
             .setTitle("이벤트 로그 전체 기록")
-            .setView(logScroll, dp(8), dp(4), dp(8), dp(4))
+            .setView(logScroll)
             .setPositiveButton("닫기", null)
             .show()
     }
